@@ -1,736 +1,732 @@
-/* =============================================================
-   ครัวนรก ร้อยม.1 — app.js
-   ============================================================= */
+/* ═══════════════════════════════════════════════════════════
+   ครัวนรก ร้อยม.1 — app.js  (Full Version)
+   ═══════════════════════════════════════════════════════════ */
 
-// ─── CHEF PIN MAP (แก้ได้) ────────────────────────────────────
-const CHEF_PINS = {
-  chef1: '1111',   // อ็อฟ  (หัวหน้าเชฟ)
-  chef2: '2222',   // ทัพไทย
-  chef3: '3333'    // ไอซ์
+// ─── PINS ─────────────────────────────────────────────────────
+const ADMIN_PIN = '0000';   // ← เปลี่ยน PIN แอดมินตรงนี้
+const CHEF_PINS = { chef1:'1111', chef2:'2222', chef3:'3333' };
+
+// ─── STATE ────────────────────────────────────────────────────
+let currentUser   = '';
+let isAdmin       = false;
+let loggedChefId  = null;
+let currentPage   = 'dashboard';
+let currentMeal   = 'ทั้งหมด';
+let currentKF     = 'all';
+let currentFoodCat= 'ทั้งหมด';
+let selectedChef  = 'chef1';
+let pendingRating = 0;
+
+// ─── STORAGE ──────────────────────────────────────────────────
+const S = {
+  get:(k,d)=>{ try{return JSON.parse(localStorage.getItem(k))??d}catch{return d} },
+  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
 };
-const ADMIN_PIN = '9999'; // PIN สำหรับ admin
 
-// ─── STATE ───────────────────────────────────────────────────
-let currentUser      = '';
-let currentPage      = 'dashboard';
-let currentMeal      = 'ทั้งหมด';
-let currentKFilter   = 'all';
-let loggedChefId     = null;   // เชฟที่ login อยู่
-let selectedChefLogin = 'chef1';
-let pendingRating    = 0;
-let ratingChefId     = null;
+let chefs       = S.get('chefs_v2', null);
+let kitchenLogs = S.get('kitchenLogs', []);
+let menus       = S.get('menus_v2', []);
+let foodItems   = S.get('foodItems', []);
+let ownerMsgs   = S.get('ownerMsgs', []);
+let chatHist    = S.get('chatHist', []);
 
-// ─── STORAGE ─────────────────────────────────────────────────
-function load(key, def) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? def; }
-  catch { return def; }
-}
-function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-
-let chefs       = load('chefs', null);
-let menus       = load('menus', []);
-let kitchenLogs = load('kitchenLogs', []);
-let ownerMsgs   = load('ownerMsgs', []);
-let chatHistory = load('chatHistory', []);
-
-/* =============================================================
-   setupDemoData()
-   ============================================================= */
-function setupDemoData() {
-  const demoChefs = [
-    {
-      id: 'chef1', name: 'เชฟอ็อฟ', role: 'หัวหน้าเชฟ', isHead: true,
-      bio: 'หัวหน้าครัวนรก ประสบการณ์สูง รสมือจัดจ้าน คุมทีมมาหลายปี',
-      photo: null,
-      ratings: [{ user: 'ลูกค้า A', score: 5 }, { user: 'ลูกค้า B', score: 4 }],
-      comments: [{ user: 'ลูกค้า A', text: 'กะเพราเชฟอ็อฟสุดยอด! 🔥', time: '20/10/2569 10:00' }]
-    },
-    {
-      id: 'chef2', name: 'เชฟทัพไทย', role: 'เชฟครัวร้อน', isHead: false,
-      bio: 'เชี่ยวชาญครัวร้อน ทอด ผัด ย่าง ฝีมือดีไม่แพ้ใคร',
-      photo: null,
-      ratings: [{ user: 'ลูกค้า C', score: 4 }],
-      comments: [{ user: 'ลูกค้า C', text: 'หมูทอดกรอบมากเลย', time: '19/10/2569 12:00' }]
-    },
-    {
-      id: 'chef3', name: 'เชฟไอซ์', role: 'เชฟขนมและของหวาน', isHead: false,
-      bio: 'ผู้เชี่ยวชาญขนมไทยและของหวาน ทำแล้วหายเร็วมาก',
-      photo: null,
-      ratings: [{ user: 'ลูกค้า D', score: 5 }],
-      comments: [{ user: 'ลูกค้า D', text: 'ทับทิมกรอบอร่อยที่สุด! 😍', time: '18/10/2569 15:00' }]
-    }
+/* ═══════════════════════════════════════════════════════════
+   DEMO DATA
+   ═══════════════════════════════════════════════════════════ */
+function setupDemoData(){
+  const demoChefs=[
+    { id:'chef1',name:'เชฟอ็อฟ',role:'หัวหน้าเชฟ',isHead:true,
+      bio:'หัวหน้าครัวนรก ประสบการณ์สูง รสมือจัดจ้าน คุมทีมมาหลายปี',
+      photo:'S__27639813.jpg',ratings:[{user:'ลูกค้า A',score:5},{user:'ลูกค้า B',score:4}],
+      comments:[{user:'ลูกค้า A',text:'กะเพราเชฟอ็อฟสุดยอด! 🔥',time:'20/10/69 10:00'}]},
+    { id:'chef2',name:'เชฟทัพไทย',role:'เชฟครัวร้อน',isHead:false,
+      bio:'เชี่ยวชาญครัวร้อน ทอด ผัด ย่าง ฝีมือดีไม่แพ้ใคร',
+      photo:'S__27639823_0.jpg',ratings:[{user:'ลูกค้า C',score:4}],
+      comments:[{user:'ลูกค้า C',text:'หมูทอดกรอบมากเลย 👍',time:'19/10/69 12:00'}]},
+    { id:'chef3',name:'เชฟไอซ์',role:'เชฟขนมและของหวาน',isHead:false,
+      bio:'ผู้เชี่ยวชาญขนมไทยและของหวาน ทำแล้วหายเร็วมาก',
+      photo:'S__27639822_0.jpg',ratings:[{user:'ลูกค้า D',score:5}],
+      comments:[{user:'ลูกค้า D',text:'ทับทิมกรอบอร่อยที่สุด! 😍',time:'18/10/69 15:00'}]}
   ];
-
-  const demoMenus = [
-    { id: 'm001', name: 'ข้าวผัดกะเพราหมูไข่ดาว', meal: 'กลางวัน', price: 60,  desc: 'สูตรเด็ดครัวนรก รสจัดจ้าน',       proposedBy: 'เชฟอ็อฟ',   createdAt: '20/10/2569' },
-    { id: 'm002', name: 'ต้มยำกุ้งน้ำข้น',         meal: 'เย็น',     price: 120, desc: 'กุ้งสด น้ำข้นเข้มข้น',            proposedBy: 'เชฟอ็อฟ',   createdAt: '20/10/2569' },
-    { id: 'm003', name: 'หมูทอดกระเทียม',           meal: 'กลางวัน', price: 70,  desc: 'กรอบนอกนุ่มใน หอมกระเทียม',      proposedBy: 'เชฟทัพไทย', createdAt: '19/10/2569' },
-    { id: 'm004', name: 'ไก่ย่างแจ่วบอง',           meal: 'เย็น',     price: 130, desc: 'ไก่บ้านหมักสูตรโบราณ',           proposedBy: 'เชฟทัพไทย', createdAt: '19/10/2569' },
-    { id: 'm005', name: 'ทับทิมกรอบ',               meal: 'ของว่าง',  price: 45,  desc: 'น้ำกะทิสด เย็นชื่นใจ',           proposedBy: 'เชฟไอซ์',   createdAt: '18/10/2569' },
-    { id: 'm006', name: 'ข้าวเหนียวมะม่วง',          meal: 'ของว่าง',  price: 60,  desc: 'มะม่วงสุก ข้าวเหนียวมูนหอม',    proposedBy: 'เชฟไอซ์',   createdAt: '18/10/2569' },
-    { id: 'm007', name: 'โจ๊กไก่',                  meal: 'เช้า',      price: 40,  desc: 'โจ๊กไก่ฉีก ร้อนๆ เช้าๆ',        proposedBy: 'เชฟอ็อฟ',   createdAt: '17/10/2569' }
+  const today=new Date().toLocaleDateString('th-TH');
+  const demoKitchen=[
+    {id:'k001',chefId:'chef1',chefName:'เชฟอ็อฟ',menuName:'กะเพราหมูสับ',
+     meal:'กลางวัน',qty:5,status:'done',note:'เสร็จแล้ว',
+     photo:null,foodImg:'https://www.themealdb.com/images/media/meals/wyxwsp1486979827.jpg',createdAt:today},
+    {id:'k002',chefId:'chef2',chefName:'เชฟทัพไทย',menuName:'หมูทอดกระเทียม',
+     meal:'กลางวัน',qty:3,status:'cooking',note:'กำลังทำ',
+     photo:null,foodImg:null,createdAt:today},
+    {id:'k003',chefId:'chef3',chefName:'เชฟไอซ์',menuName:'ทับทิมกรอบ',
+     meal:'ของว่าง',qty:10,status:'done',note:'พร้อมเสิร์ฟ',
+     photo:null,foodImg:null,createdAt:today}
   ];
-
-  const today = new Date().toLocaleDateString('th-TH');
-  const demoKitchen = [
-    { id: 'k001', chefId: 'chef1', chefName: 'เชฟอ็อฟ',   menuName: 'กะเพราหมูสับ',    meal: 'กลางวัน', qty: 5,  status: 'done',    note: 'เสร็จแล้วแจกโต๊ะ 3-5', createdAt: today },
-    { id: 'k002', chefId: 'chef2', chefName: 'เชฟทัพไทย', menuName: 'หมูทอดกระเทียม',  meal: 'กลางวัน', qty: 3,  status: 'cooking', note: '', createdAt: today },
-    { id: 'k003', chefId: 'chef3', chefName: 'เชฟไอซ์',   menuName: 'ทับทิมกรอบ',      meal: 'ของว่าง', qty: 10, status: 'done',    note: 'พร้อมเสิร์ฟ', createdAt: today },
-    { id: 'k004', chefId: 'chef1', chefName: 'เชฟอ็อฟ',   menuName: 'ต้มยำกุ้ง',        meal: 'เย็น',    qty: 2,  status: 'cooking', note: 'กำลังตั้งไฟ', createdAt: today }
+  const demoMenus=[
+    {id:'m001',name:'ข้าวผัดกะเพราหมู',meal:'กลางวัน',desc:'สูตรเด็ด',
+     proposedBy:'เชฟอ็อฟ',isChef:true,foodImg:'https://www.themealdb.com/images/media/meals/wyxwsp1486979827.jpg',createdAt:today},
+    {id:'m002',name:'ต้มยำกุ้ง',meal:'เย็น',desc:'น้ำข้นเข้มข้น',
+     proposedBy:'ลูกค้า A',isChef:false,foodImg:null,createdAt:today}
   ];
-
-  save('chefs', demoChefs);
-  save('menus', demoMenus);
-  save('kitchenLogs', demoKitchen);
-
-  chefs       = demoChefs;
-  menus       = demoMenus;
-  kitchenLogs = demoKitchen;
-
+  const demoFood=[
+    {id:'f001',name:'ข้าวผัดกะเพรา',category:'อาหารจานเดียว',
+     desc:'กะเพราหมูสับรสจัด ไข่ดาวกรอบ',
+     photo:null,foodImg:'https://www.themealdb.com/images/media/meals/wyxwsp1486979827.jpg',
+     addedBy:'admin',createdAt:today},
+    {id:'f002',name:'ต้มยำกุ้ง',category:'ซุป/แกง',
+     desc:'น้ำข้นกุ้งสด',
+     photo:null,foodImg:'https://www.themealdb.com/images/media/meals/hyarod1565090529.jpg',
+     addedBy:'admin',createdAt:today},
+    {id:'f003',name:'ทับทิมกรอบ',category:'ของหวาน',
+     desc:'น้ำกะทิสดเย็นชื่นใจ',
+     photo:null,foodImg:null,
+     addedBy:'admin',createdAt:today}
+  ];
+  S.set('chefs_v2',demoChefs); S.set('kitchenLogs',demoKitchen);
+  S.set('menus_v2',demoMenus); S.set('foodItems',demoFood);
+  chefs=demoChefs; kitchenLogs=demoKitchen; menus=demoMenus; foodItems=demoFood;
   showToast('✅ โหลดข้อมูลตัวอย่างสำเร็จ');
-  if (currentPage === 'dashboard') renderDashboard();
-  if (currentPage === 'chefs')     renderChefs();
-  if (currentPage === 'kitchen')   renderKitchen();
-  if (currentPage === 'menu')      renderMenus();
+  renderCurrentPage();
 }
 
-/* =============================================================
-   AI ADMIN — ตอบหยาบๆ สไตล์ครัวนรก
-   ============================================================= */
-const AI_KB = {
-  เปิด:      ['เปิดกี่โมง','เวลาเปิด','ปิดกี่โมง','เวลาทำการ'],
-  เมนู:      ['เมนูอะไร','มีอะไรบ้าง','เมนูแนะนำ','อาหาร'],
-  ราคา:      ['ราคา','เท่าไหร่','แพงไหม','ถูกไหม'],
-  เชฟ:       ['เชฟ','คนทำ','ผู้เชี่ยวชาญ'],
-  จอง:       ['จอง','จองโต๊ะ','ที่นั่ง','reserve'],
-  ที่ตั้ง:   ['อยู่ไหน','ที่ตั้ง','แผนที่','location','ทางไหน'],
-  ติดต่อ:    ['โทร','เบอร์','ติดต่อ','contact','line','facebook'],
-  รีวิว:     ['รีวิว','อร่อยไหม','ดีไหม','แนะนำ'],
-  จอดรถ:     ['จอดรถ','ที่จอด','parking'],
-  delivery:  ['ส่ง','เดลิเวอรี','delivery','grab','food panda']
-};
-
-const AI_REPLIES = {
-  เปิด:      ['เปิดทุกวัน 10โมงเช้า ถึง 4ทุ่ม จะถามทำไมวะ ไม่รู้จะ Google เองหรอ? 😤','เปิด 10:00-22:00 ทุกวัน ไม่มีหยุด ถ้าอยากกิน มาเลย อย่าถามซ้ำ!'],
-  เมนู:      ['มีกะเพรา ต้มยำ หมูทอด ไก่ย่าง ของหวานอีกเพียบ ดูในหน้าเมนูได้เลยวะ ขี้เกียจตอบ 😒','เมนูเยอะมาก ไปดูเองในหน้าเมนูสิ ใช้มือเลื่อนเองได้ ไม่ง่อยขนาดนั้นหรอก?'],
-  ราคา:      ['ราคาปกติ 40-200 บาท ถ้าแพงไปก็ไปกินที่อื่นสิ ไม่บังคับ 555','เริ่มต้น 40บาท แพงสุด 200บาท คุ้มมาก ถ้าคิดว่าแพงก็แสดงว่าจนไป 😈'],
-  เชฟ:       ['มีเชฟอ็อฟ เชฟทัพไทย เชฟไอซ์ ฝีมือดีทุกคน ไปดูในหน้าทีมเชฟเองได้เลย ขี้เกียจพิมพ์!','เชฟเราเก่งทุกคน ไม่ต้องห่วง ถ้าไม่อร่อยค่อยมาบ่นอีกที 😤'],
-  จอง:       ['จองได้เลย ทักมาในช่อง "ส่งข้อความถึงเจ้าของ" ข้างบน อย่ามาถามแล้วไม่จอง เสียเวลา!','จองโต๊ะส่งข้อความมาได้เลย ระบุวันเวลา จำนวนคน ถ้าข้อมูลไม่ครบ อย่าโวยวาย'],
-  ที่ตั้ง:   ['ร้อยเอ็ด อยู่แถวม.1 ถ้าหาไม่เจอก็ Google Maps เองสิ ไม่มือก็ขาพาไป 😂','อยู่ร้อยเอ็ด ม.1 ไม่รู้จะบอกละเอียดกว่านี้ยังไง ใช้ GPS ได้เลย!'],
-  ติดต่อ:    ['ส่งข้อความในเว็บนี้ได้เลย หรือจะโทรมาก็ไม่รับ 555 ติดต่อผ่านเว็บดีสุด!','ติดต่อในเว็บนี้ได้เลย ทำช่องมาให้แล้ว ยังจะถามอีกหรอ? 🙄'],
-  รีวิว:     ['อร่อยมาก ถ้าไม่อร่อยก็คงปิดร้านไปนานแล้ว ลองมากินเองสิ อย่านั่งถามอยู่เลย','รีวิวดีทุกอัน ถ้าไม่เชื่อก็ไปกินเองแล้วรู้เอง ไม่มีทางผิดหวัง 🔥'],
-  จอดรถ:     ['มีที่จอดรถ หน้าร้าน จอดได้เยอะ อย่าจอดขวาง ไม่งั้นโดนด่าจากเจ้าของด้วย!','จอดหน้าร้านได้เลย ฟรี แต่จอดระเบียบนะ ถ้าจอดห่วยก็โดนด่า ไม่เกี่ยวกัน'],
-  delivery:  ['ยังไม่มีเดลิเวอรี มาที่ร้านเองสิ อาหารร้อนๆ อร่อยกว่าตั้งเยอะ ขี้เกียจแค่ไหนเนี่ย!','เดลิเวอรียังไม่มี มากินที่ร้านดีกว่า บรรยากาศดี อาหารร้อน ไม่ต้องรอนาน']
-};
-
-const AI_DEFAULT = [
-  'ถามอะไรวะ งงเลย ถามใหม่ให้ชัดกว่านี้หน่อย! 😤',
-  'ไม่เข้าใจเลย พิมพ์ภาษามนุษย์หน่อยได้ไหม? 🙄',
-  'คำถามแปลก ลองถามใหม่ดีกว่า หรือไปถามคนอื่น 555',
-  'เอ่อ... ไม่รู้จะตอบอะไร ถามเรื่องร้านได้เลยนะ อย่ามาถามเรื่องชีวิต 😂',
-  'เรื่องร้านถามได้นะ เรื่องอื่นไปถามกูเกิ้ลเองเลย ขี้เกียจ!'
+/* ═══════════════════════════════════════════════════════════
+   AI BOT — ตอบหยาบๆ ช่วยจัดการเว็บ
+   ═══════════════════════════════════════════════════════════ */
+const BOT_KB=[
+  {k:['เปิด','ปิด','เวลา','กี่โมง'],
+   r:['เปิด 10:00-22:00 ทุกวัน ถามทำไมวะ? Google ได้นะ 😤',
+      'เปิดสิบโมงเช้าถึงสี่ทุ่ม มาได้เลย อย่าถามซ้ำ!']},
+  {k:['เมนู','อาหาร','มีอะไร'],
+   r:['ดูในหน้าเมนูได้เลยวะ ขี้เกียจพิมพ์ให้ครบ 😒',
+      'เมนูเยอะมาก ไปดูเองในหน้า "อาหาร" สิ ไม่ง่อยขนาดนั้น?']},
+  {k:['ราคา','เท่าไหร่','แพง'],
+   r:['แพงไปก็ไปกินที่อื่นสิ ไม่บังคับ 555',
+      'ราคาปกติ คุ้มมาก ถ้าคิดว่าแพงแสดงว่าจนไป 😈']},
+  {k:['จอง','โต๊ะ','ที่นั่ง'],
+   r:['จองส่งข้อความมาในช่องเจ้าของร้านได้เลย บอกวัน เวลา กี่คน อย่าลืมนะ!',
+      'ส่งข้อความในเว็บนี้ได้เลย แต่บอกข้อมูลให้ครบ ไม่งั้นไม่รับ']},
+  {k:['อร่อย','ดี','รีวิว'],
+   r:['อร่อยมาก ถ้าไม่เชื่อมากินเองสิ 🔥','รีวิวดีทุกอัน ลองมาดูเองแล้วรู้เอง']},
+  {k:['ที่ไหน','อยู่','แผนที่'],
+   r:['ร้อยเอ็ด ม.1 ใช้ Google Maps เองสิ! 😂',
+      'อยู่ร้อยเอ็ด หาเองได้ GPS มีอยู่แล้ว']},
+  {k:['เชฟ','คนทำ'],
+   r:['มีเชฟอ็อฟ เชฟทัพไทย เชฟไอซ์ ดูในหน้าทีมเชฟได้เลย',
+      'เชฟเราเก่งทุกคน ไปดูเองสิ ขี้เกียจอธิบาย']},
+  {k:['delivery','ส่ง','เดลิเวอรี'],
+   r:['ยังไม่มีเดลิเวอรี มากินที่ร้านเองดีกว่า อาหารร้อนๆ อร่อยกว่า!',
+      'ส่งไม่ได้ มาเองสิ ขี้เกียจนักก็อย่ากิน 555']},
+  {k:['สมัคร','งาน','รับสมัคร'],
+   r:['ส่งข้อความถึงเจ้าของร้านได้เลย แต่ต้องขยัน ขี้เกียจไม่รับ 😤',
+      'อยากทำงานใช่ไหม? ส่งข้อความมาเลย อย่าแค่ถาม']},
+  // Bot admin commands
+  {k:['ช่วย','admin','แอดมิน','จัดการ'],
+   r:['ฉันเป็น AI แอดมินตัวช่วย ถามเรื่องร้านได้เลย หรือบอก admin คนจริงผ่านช่องข้อความ 🤖',
+      'AI แอดมินพร้อมช่วย! ถามเรื่องร้านหรือส่งข้อความถึงเจ้าของได้เลย 🔥']}
 ];
-
-function aiReply(msg) {
-  const m = msg.toLowerCase();
-  for (const [topic, keywords] of Object.entries(AI_KB)) {
-    if (keywords.some(k => m.includes(k))) {
-      const replies = AI_REPLIES[topic];
-      return replies[Math.floor(Math.random() * replies.length)];
-    }
-  }
-  return AI_DEFAULT[Math.floor(Math.random() * AI_DEFAULT.length)];
+const BOT_DEF=[
+  'ถามอะไรวะ? ถามใหม่ให้ชัดกว่านี้ 😤',
+  'ไม่เข้าใจเลย พิมภาษามนุษย์หน่อยได้ไหม? 🙄',
+  'เรื่องร้านถามได้นะ เรื่องอื่นไปถามกูเกิ้ล 555',
+  'งงเลย ถามเรื่องร้านครัวนรกสิ ไม่ใช่เรื่องชีวิต 😂'
+];
+function aiReply(msg){
+  const m=msg.toLowerCase();
+  for(const {k,r} of BOT_KB) if(k.some(w=>m.includes(w))) return r[Math.floor(Math.random()*r.length)];
+  return BOT_DEF[Math.floor(Math.random()*BOT_DEF.length)];
 }
 
-/* =============================================================
-   CHAT
-   ============================================================= */
-function sendChat() {
-  const inp = document.getElementById('chatInput');
-  const msg = inp.value.trim();
-  if (!msg) return;
-  inp.value = '';
-
-  // เพิ่ม user message
-  chatHistory.push({ role: 'user', name: currentUser, text: msg, time: nowStr() });
-  save('chatHistory', chatHistory);
-
-  renderChat();
-
-  // AI ตอบหลัง 800ms
-  setTimeout(() => {
-    const reply = aiReply(msg);
-    chatHistory.push({ role: 'ai', name: 'AI แอดมิน 🤖', text: reply, time: nowStr() });
-    save('chatHistory', chatHistory);
-    renderChat();
-    if (currentPage === 'dashboard') renderDashboard();
-  }, 800);
+// Owner reply bot (ด่าได้)
+const OWNER_REPLIES=[
+  {k:['จอง'],r:['โอเค จองได้ บอกวัน เวลา จำนวนคนมาด้วยนะ ไม่งั้นจองไม่ได้ 😤',
+    'ได้เลย ระบุวันเวลาให้ชัด อย่าบอกแค่อยากจอง!']},
+  {k:['ชม','อร่อย','ดี','ขอบคุณ'],r:['ขอบคุณนะ มาอีกเยอะๆ พาเพื่อนมาด้วย 😄',
+    'โอ้โห ขอบคุณ มาบ่อยๆ นะ!']},
+  {k:['ร้องเรียน','แย่','ไม่ดี'],r:['บอกให้ชัดว่าปัญหาอะไร จะได้แก้ถูก! 😤',
+    'มีปัญหาอะไรบอกตรงๆ เลย ไม่ต้องอ้อมค้อม']},
+  {k:['สมัคร','งาน'],r:['ส่งประวัติมาเลย แต่ต้องขยัน ขี้เกียจไม่รับ 😤',
+    'สนใจงานใช่ไหม? บอกประสบการณ์มาด้วยนะ']}
+];
+const OWNER_DEF=['ได้รับข้อความแล้ว จะดูให้ อย่าโวยวาย รอแป็บนึง 😤',
+  'โอเค เห็นแล้ว จะจัดการให้ อดใจรอหน่อยนะ!',
+  'รับทราบ ขอบคุณที่ติดต่อมา ถ้าไม่ตอบแปลว่าลืม ทักซ้ำได้ 555'];
+function ownerAiReply(msg){
+  const m=msg.toLowerCase();
+  for(const {k,r} of OWNER_REPLIES) if(k.some(w=>m.includes(w))) return r[Math.floor(Math.random()*r.length)];
+  return OWNER_DEF[Math.floor(Math.random()*OWNER_DEF.length)];
 }
 
-function renderChat() {
-  const win = document.getElementById('chatWindow');
-  if (!win) return;
-  win.innerHTML = chatHistory.map(m => `
-    <div class="chat-msg ${m.role === 'ai' ? 'chat-ai' : 'chat-user'}">
-      <div class="chat-name">${escHtml(m.name)}</div>
-      <div class="chat-bubble">${escHtml(m.text)}</div>
-      <div class="chat-time">${m.time}</div>
-    </div>`).join('');
-  win.scrollTop = win.scrollHeight;
+/* ═══════════════════════════════════════════════════════════
+   FOOD IMAGE SEARCH (MealDB API)
+   ═══════════════════════════════════════════════════════════ */
+async function fetchFoodImage(name){
+  try{
+    const eng=await translateToEng(name);
+    const res=await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(eng)}`);
+    const data=await res.json();
+    if(data.meals && data.meals[0]) return data.meals[0].strMealThumb;
+  } catch(e){}
+  // fallback: Unsplash food photo
+  return `https://source.unsplash.com/400x300/?${encodeURIComponent(name+' food thai')}`;
 }
 
-/* =============================================================
-   OWNER MESSAGE
-   ============================================================= */
-function sendOwnerMessage() {
-  const inp = document.getElementById('ownerMsgInput');
-  const msg = inp.value.trim();
-  if (!msg) { showToast('กรุณาพิมพ์ข้อความก่อน'); return; }
-  inp.value = '';
-
-  ownerMsgs.push({
-    id: 'om' + Date.now(),
-    from: currentUser,
-    text: msg,
-    time: nowStr(),
-    replied: false,
-    reply: ''
-  });
-  save('ownerMsgs', ownerMsgs);
-  renderOwnerInbox();
-  showToast('📨 ส่งข้อความถึงเจ้าของร้านแล้ว');
-
-  // AI ตอบแทนเจ้าของ (style ด่า) หลัง 1.2s
-  setTimeout(() => {
-    const last = ownerMsgs[ownerMsgs.length - 1];
-    last.replied = true;
-    last.reply   = aiOwnerReply(msg);
-    save('ownerMsgs', ownerMsgs);
-    renderOwnerInbox();
-    showToast('🤖 AI ตอบแทนเจ้าของร้านแล้ว');
-  }, 1200);
+// แปลชื่ออาหารไทยเป็น Eng (ตาราง basic)
+const FOOD_DICT={
+  'กะเพรา':'basil stir fry','ต้มยำ':'tom yum','ต้มข่า':'tom kha',
+  'แกงเขียวหวาน':'green curry','แกงแดง':'red curry','แกงมัสมั่น':'massaman curry',
+  'ผัดไทย':'pad thai','ข้าวผัด':'fried rice','ข้าวผัดกะเพรา':'basil fried rice',
+  'หมูทอด':'pork fry','ไก่ย่าง':'grilled chicken','ปลาทอด':'fried fish',
+  'ยำวุ้นเส้น':'glass noodle salad','ส้มตำ':'papaya salad','ลาบ':'laab',
+  'น้ำตก':'nam tok','สุกี้':'sukiyaki','ชาบู':'shabu',
+  'ทับทิมกรอบ':'ruby red dessert','ข้าวเหนียวมะม่วง':'mango sticky rice',
+  'ลอดช่อง':'lod chong','บัวลอย':'bua loy','โจ๊ก':'congee','ข้าวต้ม':'rice soup'
+};
+function translateToEng(thaiName){
+  const lower=thaiName.toLowerCase();
+  for(const[th,en] of Object.entries(FOOD_DICT)) if(lower.includes(th)) return en;
+  return thaiName; // ส่งเป็นภาษาไทยไป — Unsplash จะ fallback
 }
 
-function aiOwnerReply(msg) {
-  const m = msg.toLowerCase();
-  // ชุดตอบแทนเจ้าของ — สไตล์ด่า/หยาบ แต่ยังช่วย
-  const patterns = [
-    { k: ['จอง','โต๊ะ','ที่นั่ง'],     r: ['โอเค จอง ระบุวันเวลาจำนวนคนมาด้วยนะ ไม่งั้นจองยังไงวะ? 😤','จองได้ บอกวัน เวลา กี่คน มาเดี๋ยวนี้เลย อย่าปล่อยไว้นาน!'] },
-    { k: ['ร้องเรียน','แย่','ไม่อร่อย','ติ'],r: ['โห มีปัญหาอะไร บอกมาตรงๆ เลย ไม่ต้องอ้อมค้อม จะได้แก้ให้ถูก! 😤','ร้องเรียนได้เลย แต่บอกให้ชัดว่าปัญหาอะไร ไม่งั้นแก้ไม่ถูก นะ?'] },
-    { k: ['ชม','อร่อย','ดี','สุดยอด'],   r: ['ขอบคุณนะ แต่ไม่ต้องชมมาก มาอุดหนุนบ่อยๆ ดีกว่า 😂','โอ้โห ขอบคุณที่ชม มาอีกเยอะๆ นะ พาเพื่อนมาด้วย!'] },
-    { k: ['สมัคร','งาน','รับสมัคร'],    r: ['อยากทำงานใช่ไหม? ส่งประวัติมาเลย อย่าแค่ถาม ลงมือทำสิ! 😤','สมัครงานได้ แต่ต้องขยัน ถ้าขี้เกียจไม่รับ พูดตรงๆ'] },
-  ];
-  for (const { k, r } of patterns) {
-    if (k.some(kw => m.includes(kw))) return r[Math.floor(Math.random() * r.length)];
-  }
-  const generic = [
-    'ได้รับข้อความแล้ว จะดูให้นะ อย่าโวยวายรอแปปนึง! 😤',
-    'โอเค เห็นแล้ว จะจัดการให้ อดใจรอหน่อยนะ อย่าใจร้อน!',
-    'รับทราบ ขอบคุณที่ติดต่อมา ถ้าไม่ตอบแปลว่าลืม ทักซ้ำได้ 555',
-    'เห็นแล้วๆ จะแก้ให้ ไม่ต้องทักซ้ำนะ กวนใจ! 😂'
-  ];
-  return generic[Math.floor(Math.random() * generic.length)];
+// Preview รูปก่อนเพิ่ม
+async function previewFoodImage(inputId, previewId){
+  const name=document.getElementById(inputId)?.value.trim();
+  if(!name) return;
+  const prev=document.getElementById(previewId);
+  if(!prev) return;
+  prev.innerHTML='<div style="color:var(--t2);font-size:13px">🔍 กำลังหารูป...</div>';
+  const url=await fetchFoodImage(name);
+  prev.innerHTML=url
+    ? `<img src="${url}" style="width:100%;max-width:260px;border-radius:10px;margin-top:8px" onerror="this.style.display='none'">`
+    : '<div style="color:var(--t2)">ไม่พบรูป</div>';
+  prev.dataset.imgUrl=url||'';
 }
 
-function renderOwnerInbox() {
-  const box = document.getElementById('ownerInbox');
-  if (!box) return;
-  if (!ownerMsgs.length) {
-    box.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>ยังไม่มีข้อความ</p></div>';
-    return;
-  }
-  box.innerHTML = [...ownerMsgs].reverse().map(m => `
-    <div class="inbox-item">
-      <div class="inbox-from">👤 ${escHtml(m.from)} <span class="inbox-time">${m.time}</span></div>
-      <div class="inbox-text">${escHtml(m.text)}</div>
-      ${m.replied ? `<div class="inbox-reply">🤖 AI ตอบแทนเจ้าของ: ${escHtml(m.reply)}</div>` : '<div class="inbox-pending">⏳ รอตอบ...</div>'}
-    </div>`).join('');
+/* ═══════════════════════════════════════════════════════════
+   AUTH
+   ═══════════════════════════════════════════════════════════ */
+function enterSite(){
+  const val=document.getElementById('nameInput').value.trim();
+  if(!val){showToast('ใส่ชื่อก่อนนะ 😊');return;}
+  currentUser=val; S.set('lastUser',val);
+  document.getElementById('nameOverlay').classList.add('hidden');
+  document.getElementById('navbar').classList.remove('hidden');
+  updateNavUser(); showPage('dashboard');
+}
+function showAdminLogin(){document.getElementById('adminOverlay').classList.remove('hidden')}
+function closeAdminLogin(){document.getElementById('adminOverlay').classList.add('hidden')}
+function adminLogin(){
+  const name=document.getElementById('adminNameInput').value.trim();
+  const pin =document.getElementById('adminPinInput').value.trim();
+  const hint=document.getElementById('adminLoginHint');
+  if(!name){hint.textContent='ใส่ชื่อด้วยนะ';return;}
+  if(pin!==ADMIN_PIN){hint.textContent='❌ PIN ผิด';document.getElementById('adminPinInput').value='';return;}
+  currentUser=name||'Admin'; isAdmin=true;
+  S.set('lastUser',currentUser); S.set('isAdmin',true);
+  document.getElementById('nameOverlay').classList.add('hidden');
+  document.getElementById('adminOverlay').classList.add('hidden');
+  document.getElementById('navbar').classList.remove('hidden');
+  document.getElementById('adminLoginBtn').classList.add('hidden');
+  document.getElementById('adminLogoutBtn').classList.remove('hidden');
+  updateNavUser(); updateAdminPanels(); showPage('dashboard');
+  showToast('🔐 เข้าสู่ระบบ Admin แล้ว!');
+}
+function adminLogout(){
+  isAdmin=false; S.set('isAdmin',false);
+  document.getElementById('adminLoginBtn').classList.remove('hidden');
+  document.getElementById('adminLogoutBtn').classList.add('hidden');
+  updateNavUser(); updateAdminPanels();
+  showToast('🚪 ออกจาก Admin แล้ว');
+}
+function updateNavUser(){
+  document.getElementById('navUsername').textContent='👤 '+currentUser;
+  const rb=document.getElementById('roleBadge');
+  if(isAdmin){rb.textContent='🔐 Admin';rb.className='role-badge role-admin';}
+  else if(loggedChefId){
+    const c=chefs&&chefs.find(x=>x.id===loggedChefId);
+    rb.textContent='🍳 '+(c?c.name:loggedChefId);rb.className='role-badge role-chef';
+  } else {rb.textContent='👁️ ผู้ชม';rb.className='role-badge role-viewer';}
+}
+function updateAdminPanels(){
+  const p=document.getElementById('adminMenuPanel');
+  if(p) p.classList.toggle('hidden',!isAdmin);
+}
+function changeName(){
+  const n=prompt('ชื่อใหม่:',currentUser);
+  if(n&&n.trim()){currentUser=n.trim();S.set('lastUser',currentUser);updateNavUser();}
 }
 
-/* =============================================================
-   CHEF PIN LOGIN
-   ============================================================= */
-function showChefPin() {
-  selectedChefLogin = 'chef1';
-  document.getElementById('chefPinInput').value = '';
-  document.getElementById('chefPinHint').textContent = '';
-  document.querySelectorAll('.chef-select-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+/* CHEF PIN */
+function showChefPin(){
+  selectedChef='chef1';
+  document.getElementById('chefPinInput').value='';
+  document.getElementById('chefPinHint').textContent='';
+  document.querySelectorAll('.chef-select-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   document.getElementById('chefPinOverlay').classList.remove('hidden');
 }
-
-function closeChefPin() {
-  document.getElementById('chefPinOverlay').classList.add('hidden');
-}
-
-function selectChefLogin(chefId, btn) {
-  selectedChefLogin = chefId;
-  document.querySelectorAll('.chef-select-btn').forEach(b => b.classList.remove('active'));
+function closeChefPin(){document.getElementById('chefPinOverlay').classList.add('hidden')}
+function selectChefLogin(id,btn){
+  selectedChef=id;
+  document.querySelectorAll('.chef-select-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('chefPinInput').value = '';
-  document.getElementById('chefPinHint').textContent = '';
+  document.getElementById('chefPinInput').value='';
 }
-
-function chefPinLogin() {
-  const pin   = document.getElementById('chefPinInput').value.trim();
-  const hint  = document.getElementById('chefPinHint');
-  if (!pin) { hint.textContent = 'ใส่ PIN ด้วยนะ'; return; }
-  if (pin !== CHEF_PINS[selectedChefLogin]) {
-    hint.textContent = '❌ PIN ผิด ลองใหม่';
-    document.getElementById('chefPinInput').value = '';
-    return;
-  }
-  loggedChefId = selectedChefLogin;
-  closeChefPin();
-  const chef = chefs && chefs.find(c => c.id === loggedChefId);
-  const name = chef ? chef.name : loggedChefId;
-  document.getElementById('chefBadge').textContent  = '🍳 ' + name;
-  document.getElementById('chefBadge').classList.remove('hidden');
-  showToast('🍳 ' + name + ' เข้าสู่ระบบแล้ว');
+function chefPinLogin(){
+  const pin=document.getElementById('chefPinInput').value.trim();
+  const hint=document.getElementById('chefPinHint');
+  if(!pin){hint.textContent='ใส่ PIN ด้วย';return;}
+  if(pin!==CHEF_PINS[selectedChef]){hint.textContent='❌ PIN ผิด';document.getElementById('chefPinInput').value='';return;}
+  loggedChefId=selectedChef; closeChefPin();
+  const c=chefs&&chefs.find(x=>x.id===loggedChefId);
+  updateNavUser();
+  showToast('🍳 '+(c?c.name:loggedChefId)+' เข้าระบบแล้ว');
   showPage('kitchen');
 }
-
-function chefLogout() {
-  loggedChefId = null;
-  document.getElementById('chefBadge').classList.add('hidden');
-  document.getElementById('kitchenAddPanel').classList.add('hidden');
-  document.getElementById('kitchenLoginPanel').classList.remove('hidden');
+function chefLogout(){
+  loggedChefId=null; updateNavUser();
+  document.getElementById('kitchenLoginPanel')?.classList.remove('hidden');
+  document.getElementById('kitchenAddPanel')?.classList.add('hidden');
   showToast('🚪 ออกจากระบบเชฟแล้ว');
 }
 
-/* =============================================================
-   KITCHEN LOGS
-   ============================================================= */
-function addKitchenLog() {
-  if (!loggedChefId) { showToast('กรุณา Login ก่อน'); return; }
-  const menuName = document.getElementById('kitchenMenuName').value.trim();
-  const meal     = document.getElementById('kitchenMeal').value;
-  const status   = document.getElementById('kitchenStatus').value;
-  const note     = document.getElementById('kitchenNote').value.trim();
-  const qty      = parseInt(document.getElementById('kitchenQty').value) || 1;
-  if (!menuName) { showToast('ใส่ชื่อเมนูด้วยนะ'); return; }
-
-  const chef = chefs && chefs.find(c => c.id === loggedChefId);
-  kitchenLogs.push({
-    id: 'k' + Date.now(),
-    chefId:   loggedChefId,
-    chefName: chef ? chef.name : loggedChefId,
-    menuName, meal, qty, status, note,
-    createdAt: new Date().toLocaleDateString('th-TH')
-  });
-  save('kitchenLogs', kitchenLogs);
-
-  document.getElementById('kitchenMenuName').value = '';
-  document.getElementById('kitchenNote').value     = '';
-  document.getElementById('kitchenQty').value      = '';
-  renderKitchen();
-  if (currentPage === 'dashboard') renderDashboard();
-  showToast('แจ้งงาน "' + menuName + '" แล้ว 🍳');
+/* ═══════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════ */
+function showPage(page){
+  currentPage=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  const pg=document.getElementById(page+'Page');
+  if(pg) pg.classList.remove('hidden');
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.toggle('active',l.dataset.page===page));
+  renderCurrentPage();
+}
+function renderCurrentPage(){
+  if(currentPage==='dashboard') renderDashboard();
+  if(currentPage==='chefs')     renderChefs();
+  if(currentPage==='kitchen')   renderKitchen();
+  if(currentPage==='menu')      renderMenuPage();
+  if(currentPage==='food')      renderFood();
+  if(currentPage==='chat')      {renderChat();renderInbox();}
 }
 
-function updateKitchenStatus(id, status) {
-  const log = kitchenLogs.find(k => k.id === id);
-  if (!log) return;
-  // เชฟแก้ได้แค่ของตัวเอง
-  if (loggedChefId && log.chefId !== loggedChefId) { showToast('❌ แก้ได้แค่งานของตัวเองนะ'); return; }
-  log.status = status;
-  save('kitchenLogs', kitchenLogs);
-  renderKitchen();
-  renderDashboard();
-  showToast('อัปเดตสถานะแล้ว ✅');
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════════════════════ */
+function renderDashboard(){
+  const today=new Date().toLocaleDateString('th-TH');
+  const todayK=kitchenLogs.filter(k=>k.createdAt===today);
+  document.getElementById('statMenuDone').textContent  = todayK.filter(k=>k.status==='done').length;
+  document.getElementById('statKitchenDone').textContent=kitchenLogs.filter(k=>k.status==='done').length;
+  document.getElementById('statCooking').textContent   = kitchenLogs.filter(k=>k.status==='cooking').length;
+  const totalRatings=chefs?chefs.reduce((a,c)=>a+c.ratings.length,0):0;
+  document.getElementById('statReviews').textContent   = totalRatings;
+  document.getElementById('welcomeMsg').textContent    = '👋 สวัสดี '+currentUser+(isAdmin?' (Admin)':loggedChefId?' (เชฟ)':'')+' !';
+
+  const mi={เช้า:'🌅',กลางวัน:'☀️',เย็น:'🌙',ของว่าง:'🍡'};
+  const rk=document.getElementById('recentKitchen');
+  const rKlogs=[...kitchenLogs].reverse().slice(0,5);
+  rk.innerHTML=rKlogs.length?rKlogs.map(k=>`
+    <div class="feed-item">
+      <span class="feed-dot" style="background:${k.status==='done'?'#2ecc71':'#ff6b35'}"></span>
+      ${k.foodImg?`<img src="${k.foodImg}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">`:
+        '<span style="font-size:22px">'+(mi[k.meal]||'🍽️')+'</span>'}
+      <span style="flex:1">${escH(k.menuName)}</span>
+      <span class="badge b-chef">👨‍🍳 ${escH(k.chefName)}</span>
+    </div>`).join('')
+    :'<div class="empty-state"><div class="ei">🍳</div><p>ยังไม่มีงานครัว</p></div>';
+
+  const rm=document.getElementById('recentMenus');
+  rm.innerHTML=[...menus].reverse().slice(0,6).map(m=>
+    `<span class="chip">${mi[m.meal]||'🍽️'} ${escH(m.name)}</span>`).join('')||
+    '<span style="color:var(--t2)">ยังไม่มีเมนู</span>';
 }
 
-function deleteKitchenLog(id) {
-  const log = kitchenLogs.find(k => k.id === id);
-  if (!log) return;
-  if (loggedChefId && log.chefId !== loggedChefId) { showToast('❌ ลบได้แค่งานของตัวเองนะ'); return; }
-  if (!loggedChefId) { showToast('❌ ต้อง Login ก่อนถึงจะลบได้'); return; }
-  if (!confirm('ลบงานนี้?')) return;
-  kitchenLogs = kitchenLogs.filter(k => k.id !== id);
-  save('kitchenLogs', kitchenLogs);
-  renderKitchen();
-  showToast('ลบแล้ว');
+/* ═══════════════════════════════════════════════════════════
+   CHEFS
+   ═══════════════════════════════════════════════════════════ */
+function renderChefs(){
+  if(!chefs)return;
+  document.getElementById('headChefArea').innerHTML=chefs.filter(c=>c.isHead).map(chefCard).join('');
+  document.getElementById('subChefArea').innerHTML =chefs.filter(c=>!c.isHead).map(chefCard).join('');
+}
+function chefCard(c){
+  const avg=avgR(c),stars=[1,2,3,4,5].map(i=>`<span class="star${i<=Math.round(avg)?' filled':''}">⭐</span>`).join('');
+  const ph=c.photo?`<img src="${c.photo}" class="chef-avatar" alt="${escH(c.name)}">`:`<div class="chef-avatar-ph">👨‍🍳</div>`;
+  return`<div class="chef-card${c.isHead?' head-card':''}" onclick="openChefModal('${c.id}')">
+    ${ph}<div class="chef-name">${escH(c.name)}</div>
+    <div class="chef-role">${escH(c.role)}</div>
+    <div class="chef-stars">${stars}</div>
+    <div class="chef-rating-txt">${avg>0?avg.toFixed(1)+' / 5 ('+c.ratings.length+' คน)':'ยังไม่มีคะแนน'}</div>
+    <div class="chef-comments-count">💬 ${c.comments.length} ความคิดเห็น</div>
+  </div>`;
+}
+function avgR(c){
+  if(!c.ratings?.length)return 0;
+  return c.ratings.reduce((a,b)=>a+b.score,0)/c.ratings.length;
 }
 
-function filterKitchen(f, btn) {
-  currentKFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderKitchen();
+function openChefModal(id){
+  const c=chefs.find(x=>x.id===id); if(!c)return;
+  const avg=avgR(c);
+  const ph=c.photo?`<img src="${c.photo}" class="modal-av">`:`<div class="modal-av-ph">👨‍🍳</div>`;
+  const stars=[1,2,3,4,5].map(i=>
+    `<span class="modal-star${i<=Math.round(avg)?' filled':''}"
+      onclick="setRating(${i},'${id}')" onmouseover="hoverR(${i})" onmouseout="resetR('${id}')">⭐</span>`).join('');
+  const uploadBtn=isAdmin?`<label class="upload-label" for="upPhoto_${id}">📷 เปลี่ยนรูป</label>
+    <input class="upload-input" type="file" id="upPhoto_${id}" accept="image/*" onchange="uploadChefPhoto(event,'${id}')">`:
+    `<div style="font-size:12px;color:var(--t2);margin-top:8px">🔐 Admin เท่านั้นที่เปลี่ยนรูปได้</div>`;
+  const cms=c.comments.length?[...c.comments].reverse().map(cm=>`
+    <div class="comment-item">
+      <div class="comment-author">👤 ${escH(cm.user)}</div>
+      <div class="comment-text">${escH(cm.text)}</div>
+      <div class="comment-time">${cm.time}</div>
+    </div>`).join(''):`<p style="color:var(--t2);font-size:13px">ยังไม่มีความคิดเห็น</p>`;
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-chef-head">
+      ${ph}
+      <div>
+        <div style="font-size:22px;font-weight:700">${escH(c.name)}</div>
+        <div style="color:var(--t2);font-size:14px">${escH(c.role)}</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.5">${escH(c.bio)}</div>
+        ${uploadBtn}
+      </div>
+    </div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:8px">⭐ ให้คะแนน</div>
+    <div class="modal-stars" id="mStars">${stars}</div>
+    <div class="modal-rate-label" id="mRateLbl">${avg>0?'เฉลี่ย '+avg.toFixed(1)+' / 5 ('+c.ratings.length+' คน)':'เป็นคนแรกที่ให้คะแนน!'}</div>
+    <div style="font-size:15px;font-weight:600;margin:16px 0 10px">💬 ความคิดเห็น</div>
+    <div class="comment-box">
+      <input type="text" id="cmtInput" placeholder="เขียนความคิดเห็น..." maxlength="200"/>
+      <button onclick="submitComment('${id}')">ส่ง</button>
+    </div>
+    <div class="comments-list" id="cmtList">${cms}</div>`;
+  document.getElementById('chefModal').classList.remove('hidden');
+  setTimeout(()=>{
+    const inp=document.getElementById('cmtInput');
+    if(inp) inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitComment(id);});
+  },50);
+}
+function closeChefModal(){document.getElementById('chefModal').classList.add('hidden');}
+function hoverR(s){document.querySelectorAll('.modal-star').forEach((x,i)=>x.classList.toggle('filled',i<s))}
+function resetR(id){const c=chefs.find(x=>x.id===id);const sh=pendingRating||Math.round(avgR(c));document.querySelectorAll('.modal-star').forEach((x,i)=>x.classList.toggle('filled',i<sh))}
+function setRating(score,id){
+  const c=chefs.find(x=>x.id===id);if(!c)return;
+  pendingRating=score;
+  const ex=c.ratings.findIndex(r=>r.user===currentUser);
+  if(ex>=0)c.ratings[ex].score=score; else c.ratings.push({user:currentUser,score});
+  S.set('chefs_v2',chefs);
+  document.getElementById('mRateLbl').textContent='คุณให้ '+score+' ⭐ | เฉลี่ย '+avgR(c).toFixed(1)+' ('+c.ratings.length+' คน)';
+  document.querySelectorAll('.modal-star').forEach((x,i)=>x.classList.toggle('filled',i<score));
+  showToast('ให้คะแนน '+score+' ⭐ แล้ว');
+  if(currentPage==='chefs')renderChefs();
+}
+function submitComment(id){
+  const inp=document.getElementById('cmtInput');
+  const txt=inp.value.trim();if(!txt)return;
+  const c=chefs.find(x=>x.id===id);if(!c)return;
+  c.comments.push({user:currentUser,text:txt,time:nowStr()});
+  S.set('chefs_v2',chefs); inp.value='';
+  document.getElementById('cmtList').innerHTML=[...c.comments].reverse().map(cm=>`
+    <div class="comment-item">
+      <div class="comment-author">👤 ${escH(cm.user)}</div>
+      <div class="comment-text">${escH(cm.text)}</div>
+      <div class="comment-time">${cm.time}</div>
+    </div>`).join('');
+  showToast('ความคิดเห็นถูกส่งแล้ว 💬');
+  if(currentPage==='chefs')renderChefs();
+}
+function uploadChefPhoto(evt,id){
+  if(!isAdmin){showToast('❌ เฉพาะ Admin เท่านั้น');return;}
+  const f=evt.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{const c=chefs.find(x=>x.id===id);if(!c)return;c.photo=e.target.result;S.set('chefs_v2',chefs);showToast('อัปโหลดรูปแล้ว 📷');openChefModal(id);if(currentPage==='chefs')renderChefs();};
+  r.readAsDataURL(f);
 }
 
-function renderKitchen() {
-  // แสดง/ซ่อน panel
-  if (loggedChefId) {
+/* ═══════════════════════════════════════════════════════════
+   KITCHEN — เชฟแจ้งงาน พร้อมรูปภาพอัตโนมัติ
+   ═══════════════════════════════════════════════════════════ */
+async function addKitchenLog(){
+  if(!loggedChefId){showToast('Login ก่อนนะ');return;}
+  const name=document.getElementById('kitchenMenuName').value.trim();
+  if(!name){showToast('ใส่ชื่อเมนูด้วย');return;}
+  const meal  =document.getElementById('kitchenMeal').value;
+  const status=document.getElementById('kitchenStatus').value;
+  const note  =document.getElementById('kitchenNote').value.trim();
+  const qty   =parseInt(document.getElementById('kitchenQty').value)||1;
+  const c=chefs&&chefs.find(x=>x.id===loggedChefId);
+  showToast('🔍 กำลังหารูป...');
+  const img=await fetchFoodImage(name);
+  kitchenLogs.push({id:'k'+Date.now(),chefId:loggedChefId,chefName:c?c.name:loggedChefId,
+    menuName:name,meal,qty,status,note,foodImg:img,photo:null,
+    createdAt:new Date().toLocaleDateString('th-TH')});
+  S.set('kitchenLogs',kitchenLogs);
+  document.getElementById('kitchenMenuName').value='';
+  document.getElementById('kitchenNote').value='';
+  document.getElementById('kitchenQty').value='';
+  renderKitchen(); renderDashboard();
+  showToast('แจ้งงาน "'+name+'" แล้ว 🍳');
+}
+function updateKStatus(id,st){
+  const k=kitchenLogs.find(x=>x.id===id);if(!k)return;
+  if(loggedChefId&&k.chefId!==loggedChefId&&!isAdmin){showToast('❌ แก้ได้แค่งานตัวเอง');return;}
+  k.status=st;S.set('kitchenLogs',kitchenLogs);renderKitchen();renderDashboard();showToast('อัปเดตแล้ว ✅');
+}
+function deleteKLog(id){
+  const k=kitchenLogs.find(x=>x.id===id);if(!k)return;
+  if(!isAdmin&&(!loggedChefId||k.chefId!==loggedChefId)){showToast('❌ ไม่มีสิทธิ์ลบ');return;}
+  if(!confirm('ลบงานนี้?'))return;
+  kitchenLogs=kitchenLogs.filter(x=>x.id!==id);
+  S.set('kitchenLogs',kitchenLogs);renderKitchen();showToast('ลบแล้ว');
+}
+function filterKitchen(f,btn){
+  currentKF=f;document.querySelectorAll('#kitchenPage .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderKitchen();
+}
+function renderKitchen(){
+  const mi={เช้า:'🌅',กลางวัน:'☀️',เย็น:'🌙',ของว่าง:'🍡'};
+  if(loggedChefId||isAdmin){
     document.getElementById('kitchenLoginPanel').classList.add('hidden');
     document.getElementById('kitchenAddPanel').classList.remove('hidden');
-    const chef = chefs && chefs.find(c => c.id === loggedChefId);
-    document.getElementById('kitchenChefName').textContent = chef ? chef.name : loggedChefId;
+    const c=chefs&&chefs.find(x=>x.id===loggedChefId);
+    document.getElementById('kitchenChefName').textContent=c?c.name:(isAdmin?'Admin':'');
   } else {
     document.getElementById('kitchenLoginPanel').classList.remove('hidden');
     document.getElementById('kitchenAddPanel').classList.add('hidden');
   }
-
-  let filtered = [...kitchenLogs];
-  const today  = new Date().toLocaleDateString('th-TH');
-  if (currentKFilter === 'cooking') filtered = filtered.filter(k => k.status === 'cooking');
-  if (currentKFilter === 'done')    filtered = filtered.filter(k => k.status === 'done');
-  if (currentKFilter === 'today')   filtered = filtered.filter(k => k.createdAt === today);
-  filtered.reverse();
-
-  const list = document.getElementById('kitchenList');
-  if (!filtered.length) {
-    list.innerHTML = '<div class="empty-state"><div class="emoji">🍳</div><p>ยังไม่มีงานในหมวดนี้</p></div>';
-    return;
-  }
-
-  const mealIcon = { เช้า: '🌅', กลางวัน: '☀️', เย็น: '🌙', ของว่าง: '🍡' };
-
-  list.innerHTML = filtered.map(k => {
-    const isMine  = loggedChefId === k.chefId;
-    const canEdit = isMine; // เชฟแก้แค่ของตัวเอง
-    return `
-    <div class="task-card${k.status === 'done' ? ' done' : ''}">
+  const today=new Date().toLocaleDateString('th-TH');
+  let fl=[...kitchenLogs];
+  if(currentKF==='cooking') fl=fl.filter(k=>k.status==='cooking');
+  if(currentKF==='done')    fl=fl.filter(k=>k.status==='done');
+  if(currentKF==='today')   fl=fl.filter(k=>k.createdAt===today);
+  fl.reverse();
+  const list=document.getElementById('kitchenList');
+  if(!fl.length){list.innerHTML='<div class="empty-state"><div class="ei">🍳</div><p>ยังไม่มีงาน</p></div>';return;}
+  list.innerHTML=fl.map(k=>{
+    const canEdit=isAdmin||(loggedChefId&&k.chefId===loggedChefId);
+    return`<div class="kcard${k.status==='done'?' done':''}">
       <div>
-        <div class="task-title">${mealIcon[k.meal]||'🍽️'} ${escHtml(k.menuName)}</div>
-        ${k.note ? `<div style="font-size:13px;color:var(--text2);margin-top:3px">📝 ${escHtml(k.note)}</div>` : ''}
-        <div class="task-meta">
-          <span class="badge" style="background:rgba(255,215,0,.15);color:var(--gold)">👨‍🍳 ${escHtml(k.chefName)}</span>
-          <span class="badge badge-cat">${k.meal}</span>
-          <span class="badge" style="background:rgba(255,255,255,.07);color:var(--text2)">🍽️ ${k.qty} จาน</span>
-          <span class="badge ${k.status==='done' ? 'badge-done' : 'badge-cooking'}">
-            ${k.status==='done' ? '✅ เสร็จแล้ว' : '🔥 กำลังปรุง'}
-          </span>
-          <span class="badge" style="background:rgba(255,255,255,.05);color:var(--text2)">📅 ${k.createdAt}</span>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:6px">
+          ${k.foodImg?`<img src="${k.foodImg}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`:''}
+          <div>
+            <div class="kcard-title">${mi[k.meal]||'🍽️'} ${escH(k.menuName)}</div>
+            ${k.note?`<div style="font-size:13px;color:var(--t2)">📝 ${escH(k.note)}</div>`:''}
+          </div>
+        </div>
+        <div class="kcard-meta">
+          <span class="badge b-chef">👨‍🍳 ${escH(k.chefName)}</span>
+          <span class="badge b-meal">${k.meal}</span>
+          <span class="badge b-qty">🍽️ ${k.qty} จาน</span>
+          <span class="badge ${k.status==='done'?'b-done':'b-cook'}">${k.status==='done'?'✅ เสร็จ':'🔥 กำลังปรุง'}</span>
+          <span class="badge b-date">📅 ${k.createdAt}</span>
         </div>
       </div>
-      <div class="task-actions">
-        ${canEdit && k.status !== 'done' ? `<button class="task-btn task-btn-done" onclick="updateKitchenStatus('${k.id}','done')">✅ เสร็จแล้ว</button>` : ''}
-        ${canEdit && k.status === 'done' ? `<button class="task-btn task-btn-progress" onclick="updateKitchenStatus('${k.id}','cooking')">🔥 ยังปรุง</button>` : ''}
-        ${canEdit ? `<button class="task-btn task-btn-delete" onclick="deleteKitchenLog('${k.id}')">🗑️</button>` : ''}
+      <div class="kcard-actions">
+        ${canEdit&&k.status!=='done'?`<button class="act-btn act-done" onclick="updateKStatus('${k.id}','done')">✅ เสร็จ</button>`:''}
+        ${canEdit&&k.status==='done' ?`<button class="act-btn act-undo" onclick="updateKStatus('${k.id}','cooking')">🔥 ยังปรุง</button>`:''}
+        ${canEdit?`<button class="act-btn act-del" onclick="deleteKLog('${k.id}')">🗑️</button>`:''}
       </div>
     </div>`;
   }).join('');
 }
 
-/* =============================================================
-   DASHBOARD
-   ============================================================= */
-function renderDashboard() {
-  const today       = new Date().toLocaleDateString('th-TH');
-  const todayLogs   = kitchenLogs.filter(k => k.createdAt === today);
-  const menuDone    = todayLogs.filter(k => k.status === 'done').length;
-  const kitchenDone = kitchenLogs.filter(k => k.status === 'done').length;
-  const cooking     = kitchenLogs.filter(k => k.status === 'cooking').length;
-
-  document.getElementById('statMenuDone').textContent     = menuDone;
-  document.getElementById('statKitchenDone').textContent  = kitchenDone;
-  document.getElementById('statKitchenCooking').textContent = cooking;
-  document.getElementById('statMessages').textContent     = ownerMsgs.length;
-  document.getElementById('welcomeMsg').textContent       = '👋 สวัสดี ' + currentUser + '! ยินดีต้อนรับสู่ครัวนรก';
-
-  // งานครัวล่าสุด
-  const rk = document.getElementById('recentKitchen');
-  const recentK = [...kitchenLogs].reverse().slice(0, 5);
-  const mealIcon = { เช้า: '🌅', กลางวัน: '☀️', เย็น: '🌙', ของว่าง: '🍡' };
-  rk.innerHTML = recentK.length
-    ? recentK.map(k => `
-        <div class="recent-task-item">
-          <span class="task-status-dot" style="background:${k.status==='done'?'#2ecc71':'#f39c12'}"></span>
-          <span style="flex:1">${mealIcon[k.meal]||'🍽️'} ${escHtml(k.menuName)}</span>
-          <span class="badge" style="background:rgba(255,215,0,.15);color:var(--gold)">👨‍🍳 ${escHtml(k.chefName)}</span>
-        </div>`).join('')
-    : '<div class="empty-state"><div class="emoji">🍳</div><p>ยังไม่มีงานครัว</p></div>';
-
-  // เมนูล่าสุด
-  const rm = document.getElementById('recentMenus');
-  rm.innerHTML = [...menus].reverse().slice(0,6).map(m =>
-    `<span class="menu-chip">${mealIcon[m.meal]||'🍽️'} ${escHtml(m.name)}${m.price?' <span style="color:var(--gold)">'+m.price+'฿</span>':''}</span>`
-  ).join('') || '<span style="color:var(--text2)">ยังไม่มีเมนู</span>';
+/* ═══════════════════════════════════════════════════════════
+   MENU PAGE — ผู้ชม+เชฟเสนอได้, Admin จัดการเต็ม
+   ═══════════════════════════════════════════════════════════ */
+async function addMenu(){
+  const name=document.getElementById('menuName').value.trim();
+  if(!name){showToast('ใส่ชื่อเมนูด้วย');return;}
+  const meal=document.getElementById('menuMeal').value;
+  const desc=document.getElementById('menuDesc').value.trim();
+  const isChef=!!loggedChefId;
+  showToast('🔍 กำลังหารูป...');
+  const img=await fetchFoodImage(name);
+  menus.push({id:'m'+Date.now(),name,meal,desc,foodImg:img,
+    proposedBy:currentUser,isChef,isAdmin:isAdmin,
+    createdAt:new Date().toLocaleDateString('th-TH')});
+  S.set('menus_v2',menus);
+  document.getElementById('menuName').value='';
+  document.getElementById('menuDesc').value='';
+  renderMenuPage();
+  showToast((isChef?'🍳 เชฟ':'💡')+' เสนอเมนู "'+name+'" แล้ว');
 }
-
-/* =============================================================
-   CHEFS
-   ============================================================= */
-function renderChefs() {
-  if (!chefs) return;
-  document.getElementById('headChefArea').innerHTML = chefs.filter(c => c.isHead).map(chefCardHTML).join('');
-  document.getElementById('subChefArea').innerHTML  = chefs.filter(c => !c.isHead).map(chefCardHTML).join('');
+async function addAdminMenu(){
+  if(!isAdmin){showToast('❌ เฉพาะ Admin');return;}
+  const name=document.getElementById('adminMenuName').value.trim();
+  if(!name){showToast('ใส่ชื่อเมนูด้วย');return;}
+  const meal =document.getElementById('adminMenuMeal').value;
+  const price=document.getElementById('adminMenuPrice').value;
+  const desc =document.getElementById('adminMenuDesc').value.trim();
+  showToast('🔍 กำลังหารูป...');
+  const img=await fetchFoodImage(name);
+  menus.push({id:'m'+Date.now(),name,meal,price:price?parseInt(price):null,desc,foodImg:img,
+    proposedBy:'Admin',isAdminMenu:true,
+    createdAt:new Date().toLocaleDateString('th-TH')});
+  S.set('menus_v2',menus);
+  document.getElementById('adminMenuName').value='';
+  document.getElementById('adminMenuPrice').value='';
+  document.getElementById('adminMenuDesc').value='';
+  renderMenuPage(); showToast('✅ เพิ่มเมนูของร้านแล้ว');
 }
-
-function chefCardHTML(chef) {
-  const avg  = avgRating(chef);
-  const stars = [1,2,3,4,5].map(i =>
-    `<span class="star${i <= Math.round(avg) ? ' filled' : ''}">⭐</span>`).join('');
-  const ratingTxt = avg > 0
-    ? avg.toFixed(1) + ' / 5.0 (' + chef.ratings.length + ' คน)'
-    : 'ยังไม่มีคะแนน';
-  const photoEl = chef.photo
-    ? `<img src="${chef.photo}" class="chef-avatar" alt="${escHtml(chef.name)}" />`
-    : `<div class="chef-avatar-placeholder">👨‍🍳</div>`;
-  return `
-  <div class="chef-card${chef.isHead?' head':''}" onclick="openChefModal('${chef.id}')">
-    ${photoEl}
-    <div class="chef-name">${escHtml(chef.name)}</div>
-    <div class="chef-role">${escHtml(chef.role)}</div>
-    <div class="chef-stars">${stars}</div>
-    <div class="chef-rating-text">${ratingTxt}</div>
-    <div class="chef-comment-count">💬 ${chef.comments.length} ความคิดเห็น</div>
-  </div>`;
+function deleteMenu(id){
+  if(!isAdmin){showToast('❌ Admin เท่านั้น');return;}
+  if(!confirm('ลบเมนูนี้?'))return;
+  menus=menus.filter(m=>m.id!==id);S.set('menus_v2',menus);renderMenuPage();showToast('ลบแล้ว');
 }
-
-function avgRating(chef) {
-  if (!chef.ratings || !chef.ratings.length) return 0;
-  return chef.ratings.reduce((a, b) => a + b.score, 0) / chef.ratings.length;
+function showMeal(m,btn){
+  currentMeal=m;document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMenuPage();
 }
-
-function openChefModal(chefId) {
-  ratingChefId  = chefId;
-  pendingRating = 0;
-  const chef    = chefs.find(c => c.id === chefId);
-  if (!chef) return;
-  const avg = avgRating(chef);
-  const photoEl = chef.photo
-    ? `<img src="${chef.photo}" class="modal-avatar" alt="${escHtml(chef.name)}" />`
-    : `<div class="modal-avatar-ph">👨‍🍳</div>`;
-  const modalStars = [1,2,3,4,5].map(i =>
-    `<span class="modal-star${i<=Math.round(avg)?' filled':''}"
-      onclick="setModalRating(${i},'${chefId}')"
-      onmouseover="hoverModalRating(${i})"
-      onmouseout="resetModalStarHover('${chefId}')">⭐</span>`).join('');
-  const commentsHTML = chef.comments.length === 0
-    ? '<p style="color:var(--text2);font-size:13px">ยังไม่มีความคิดเห็น</p>'
-    : [...chef.comments].reverse().map(c => `
-        <div class="comment-item">
-          <div class="comment-author">👤 ${escHtml(c.user)}</div>
-          <div class="comment-text">${escHtml(c.text)}</div>
-          <div class="comment-time">${c.time}</div>
-        </div>`).join('');
-
-  document.getElementById('modalContent').innerHTML = `
-    <div class="modal-chef-header">
-      ${photoEl}
-      <div>
-        <div style="font-size:22px;font-weight:700">${escHtml(chef.name)}</div>
-        <div style="color:var(--text2);font-size:14px;margin-top:4px">${escHtml(chef.role)}</div>
-        <div style="font-size:13px;color:var(--text2);margin-top:8px;line-height:1.6">${escHtml(chef.bio)}</div>
-        <label class="upload-label" for="photoUp_${chef.id}">📷 อัปโหลดรูปภาพ</label>
-        <input class="upload-input" type="file" id="photoUp_${chef.id}" accept="image/*"
-          onchange="uploadChefPhoto(event,'${chef.id}')" />
+function renderMenuPage(){
+  if(isAdmin) document.getElementById('adminMenuPanel')?.classList.remove('hidden');
+  const mi={เช้า:'🌅',กลางวัน:'☀️',เย็น:'🌙',ของว่าง:'🍡'};
+  const filtered=currentMeal==='ทั้งหมด'?menus:menus.filter(m=>m.meal===currentMeal);
+  const official=filtered.filter(m=>m.isAdminMenu).reverse();
+  const suggest =filtered.filter(m=>!m.isAdminMenu).reverse();
+  const mkCard=(m)=>`
+    <div class="menu-card${!m.isAdminMenu?' suggest-item':''}">
+      ${m.foodImg?`<img src="${m.foodImg}" style="width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.style.display='none'">`:
+        `<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:48px">${mi[m.meal]||'🍽️'}</div>`}
+      <div class="mc-head">
+        <div class="mc-name">${escH(m.name)}</div>
+        <span class="${m.isAdminMenu?'mc-meal':'mc-suggest-tag'}">${m.isAdminMenu?(mi[m.meal]+' '+m.meal):'💡 แนะนำ'}</span>
       </div>
-    </div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:8px">⭐ ให้คะแนนเชฟ</div>
-    <div class="modal-stars" id="modalStarsRow">${modalStars}</div>
-    <div class="modal-rate-label" id="modalRateLabel">${avg>0?'คะแนนเฉลี่ย '+avg.toFixed(1)+' / 5  ('+chef.ratings.length+' คน)':'ยังไม่มีคะแนน – คุณเป็นคนแรก!'}</div>
-    <div style="font-size:15px;font-weight:600;margin:16px 0 10px">💬 ความคิดเห็น</div>
-    <div class="comment-box">
-      <input type="text" id="commentInput" placeholder="เขียนความคิดเห็น..." maxlength="200" />
-      <button onclick="submitComment('${chef.id}')">ส่ง</button>
-    </div>
-    <div class="comments-list" id="commentsList">${commentsHTML}</div>
-  `;
-  document.getElementById('chefModal').classList.remove('hidden');
-  setTimeout(() => {
-    const inp = document.getElementById('commentInput');
-    if (inp) inp.addEventListener('keydown', e => { if (e.key==='Enter') submitComment(chefId); });
-  }, 50);
+      ${m.price?`<div class="mc-price">${m.price} ฿</div>`:''}
+      ${m.desc?`<div class="mc-desc">${escH(m.desc)}</div>`:''}
+      <div class="mc-author">📅 ${m.createdAt} · ${escH(m.proposedBy)}${m.isChef?' 🍳':''}</div>
+      ${isAdmin?`<button class="mc-del" onclick="deleteMenu('${m.id}')">🗑️ ลบ</button>`:''}
+    </div>`;
+  document.getElementById('menuList').innerHTML=official.length?official.map(mkCard).join(''):'<div class="empty-state"><div class="ei">🍽️</div><p>ยังไม่มีเมนูของร้าน</p></div>';
+  document.getElementById('suggestList').innerHTML=suggest.length?suggest.map(mkCard).join(''):'<div class="empty-state"><div class="ei">💡</div><p>ยังไม่มีเมนูที่แนะนำ — เสนอได้เลย!</p></div>';
 }
 
-function closeChefModal() {
-  document.getElementById('chefModal').classList.add('hidden');
-  pendingRating = 0; ratingChefId = null;
+/* ═══════════════════════════════════════════════════════════
+   FOOD PAGE — หน้าอาหารรูปจริง (Admin+ผู้ชมเสนอได้)
+   ═══════════════════════════════════════════════════════════ */
+async function addFoodItem(){
+  const name=document.getElementById('foodName').value.trim();
+  if(!name){showToast('ใส่ชื่ออาหารด้วย');return;}
+  const cat =document.getElementById('foodCat').value;
+  const desc=document.getElementById('foodDesc').value.trim();
+  showToast('🔍 กำลังหารูป...');
+  const img=await fetchFoodImage(name);
+  foodItems.push({id:'f'+Date.now(),name,category:cat,desc,foodImg:img,photo:null,
+    addedBy:currentUser,isAdmin,
+    createdAt:new Date().toLocaleDateString('th-TH')});
+  S.set('foodItems',foodItems);
+  document.getElementById('foodName').value='';
+  document.getElementById('foodDesc').value='';
+  const prev=document.getElementById('foodImgPreview');
+  if(prev){prev.innerHTML='';prev.dataset.imgUrl='';}
+  renderFood(); showToast('เพิ่มอาหาร "'+name+'" แล้ว 🍽️');
 }
-
-function hoverModalRating(score) {
-  document.querySelectorAll('.modal-star').forEach((s,i) => s.classList.toggle('filled', i < score));
+function uploadFoodPhoto(evt,id){
+  if(!isAdmin){showToast('❌ Admin เท่านั้น');return;}
+  const f=evt.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{const item=foodItems.find(x=>x.id===id);if(!item)return;item.photo=e.target.result;S.set('foodItems',foodItems);renderFood();showToast('อัปโหลดรูปแล้ว 📷');};
+  r.readAsDataURL(f);
 }
-
-function resetModalStarHover(chefId) {
-  const chef = chefs.find(c => c.id === chefId);
-  const show = pendingRating || Math.round(avgRating(chef));
-  document.querySelectorAll('.modal-star').forEach((s,i) => s.classList.toggle('filled', i < show));
+function deleteFoodItem(id){
+  if(!isAdmin){showToast('❌ Admin เท่านั้น');return;}
+  if(!confirm('ลบอาหารนี้?'))return;
+  foodItems=foodItems.filter(x=>x.id!==id);S.set('foodItems',foodItems);renderFood();showToast('ลบแล้ว');
 }
-
-function setModalRating(score, chefId) {
-  const chef = chefs.find(c => c.id === chefId);
-  if (!chef) return;
-  pendingRating = score;
-  const ex = chef.ratings.findIndex(r => r.user === currentUser);
-  if (ex >= 0) chef.ratings[ex].score = score;
-  else chef.ratings.push({ user: currentUser, score });
-  save('chefs', chefs);
-  const avg = avgRating(chef);
-  document.getElementById('modalRateLabel').textContent =
-    'คุณให้ ' + score + ' ดาว | เฉลี่ย ' + avg.toFixed(1) + ' / 5  (' + chef.ratings.length + ' คน)';
-  document.querySelectorAll('.modal-star').forEach((s,i) => s.classList.toggle('filled', i < score));
-  showToast('ให้คะแนน ' + score + ' ⭐ แก่ ' + chef.name + ' แล้ว');
-  if (currentPage==='chefs') renderChefs();
+function filterFood(cat,btn){
+  currentFoodCat=cat;document.querySelectorAll('#foodPage .ftab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderFood();
 }
-
-function submitComment(chefId) {
-  const inp  = document.getElementById('commentInput');
-  const text = inp.value.trim();
-  if (!text) return;
-  const chef = chefs.find(c => c.id === chefId);
-  if (!chef) return;
-  chef.comments.push({ user: currentUser, text, time: nowStr() });
-  save('chefs', chefs);
-  inp.value = '';
-  document.getElementById('commentsList').innerHTML =
-    [...chef.comments].reverse().map(c => `
-      <div class="comment-item">
-        <div class="comment-author">👤 ${escHtml(c.user)}</div>
-        <div class="comment-text">${escHtml(c.text)}</div>
-        <div class="comment-time">${c.time}</div>
-      </div>`).join('');
-  showToast('ความคิดเห็นถูกส่งแล้ว 💬');
-  if (currentPage==='chefs') renderChefs();
-}
-
-function uploadChefPhoto(event, chefId) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const chef = chefs.find(c => c.id === chefId);
-    if (!chef) return;
-    chef.photo = e.target.result;
-    save('chefs', chefs);
-    showToast('อัปโหลดรูปภาพสำเร็จ 📷');
-    openChefModal(chefId);
-    if (currentPage==='chefs') renderChefs();
-  };
-  reader.readAsDataURL(file);
-}
-
-/* =============================================================
-   MENU
-   ============================================================= */
-function addMenu() {
-  const name  = document.getElementById('menuName').value.trim();
-  const meal  = document.getElementById('menuMeal').value;
-  const price = document.getElementById('menuPrice').value;
-  const desc  = document.getElementById('menuDesc').value.trim();
-  if (!name) { showToast('ใส่ชื่อเมนูด้วยนะ'); return; }
-  menus.push({ id: 'm'+Date.now(), name, meal, price: price?parseInt(price):null,
-    desc, proposedBy: currentUser, createdAt: new Date().toLocaleDateString('th-TH') });
-  save('menus', menus);
-  document.getElementById('menuName').value  = '';
-  document.getElementById('menuPrice').value = '';
-  document.getElementById('menuDesc').value  = '';
-  renderMenus();
-  showToast('เสนอเมนู "'+name+'" แล้ว 🍽️');
-}
-
-function showMeal(meal, btn) {
-  currentMeal = meal;
-  document.querySelectorAll('.meal-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderMenus();
-}
-
-function renderMenus() {
-  const mealIcon = { เช้า:'🌅', กลางวัน:'☀️', เย็น:'🌙', ของว่าง:'🍡' };
-  const filtered = (currentMeal==='ทั้งหมด' ? menus : menus.filter(m=>m.meal===currentMeal)).slice().reverse();
-  const list = document.getElementById('menuList');
-  if (!filtered.length) {
-    list.innerHTML = '<div class="empty-state"><div class="emoji">🍽️</div><p>ยังไม่มีเมนู</p></div>';
-    return;
-  }
-  list.innerHTML = filtered.map(m => `
-    <div class="menu-card">
-      <div class="menu-card-header">
-        <div class="menu-card-name">${escHtml(m.name)}</div>
-        <span class="menu-card-meal">${mealIcon[m.meal]||'🍽️'} ${m.meal}</span>
+function renderFood(){
+  const filtered=currentFoodCat==='ทั้งหมด'?foodItems:foodItems.filter(f=>f.category===currentFoodCat);
+  const list=document.getElementById('foodGrid');
+  if(!list)return;
+  if(!filtered.length){list.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="ei">🍽️</div><p>ยังไม่มีรายการอาหาร — เพิ่มได้เลย!</p></div>';return;}
+  list.innerHTML=[...filtered].reverse().map(f=>{
+    const imgSrc=f.photo||f.foodImg;
+    return`<div class="food-card">
+      ${imgSrc
+        ?`<img src="${imgSrc}" class="food-img" onerror="this.src='';this.style.background='var(--bg3)'" alt="${escH(f.name)}">`
+        :`<div class="food-img-ph">🍽️</div>`}
+      <div class="food-body">
+        <div class="food-name">${escH(f.name)}</div>
+        <div class="food-cat">${escH(f.category)}</div>
+        ${f.desc?`<div class="food-desc">${escH(f.desc)}</div>`:''}
+        <div class="food-author">👤 ${escH(f.addedBy)} · ${f.createdAt}${f.isAdmin?' 🔐':''}</div>
+        ${isAdmin?`
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <label class="upload-label" style="font-size:11px;padding:4px 10px" for="upFood_${f.id}">📷 เปลี่ยนรูป</label>
+            <input class="upload-input" type="file" id="upFood_${f.id}" accept="image/*" onchange="uploadFoodPhoto(event,'${f.id}')">
+            <button class="mc-del" onclick="deleteFoodItem('${f.id}')">🗑️</button>
+          </div>`:''}
       </div>
-      ${m.price ? `<div class="menu-card-price">${m.price} ฿</div>` : ''}
-      ${m.desc  ? `<div class="menu-card-desc">${escHtml(m.desc)}</div>` : ''}
-      <div class="menu-card-author">📅 ${m.createdAt} · เสนอโดย ${escHtml(m.proposedBy)}</div>
-      <button class="menu-card-del" onclick="deleteMenu('${m.id}')">🗑️ ลบ</button>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHAT + OWNER MESSAGES
+   ═══════════════════════════════════════════════════════════ */
+function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const msg=inp.value.trim();if(!msg)return;
+  inp.value='';
+  chatHist.push({role:'user',name:currentUser,text:msg,time:nowStr()});
+  S.set('chatHist',chatHist); renderChat();
+  setTimeout(()=>{
+    const reply=aiReply(msg);
+    chatHist.push({role:'ai',name:'🤖 AI แอดมิน',text:reply,time:nowStr()});
+    S.set('chatHist',chatHist); renderChat();
+  },700);
+}
+function renderChat(){
+  const win=document.getElementById('chatWindow');if(!win)return;
+  win.innerHTML=chatHist.map(m=>`
+    <div class="chat-msg ${m.role==='ai'?'chat-ai':'chat-user'}">
+      <div class="chat-name">${escH(m.name)}</div>
+      <div class="chat-bubble">${escH(m.text)}</div>
+      <div class="chat-time">${m.time}</div>
+    </div>`).join('');
+  win.scrollTop=win.scrollHeight;
+}
+function sendOwnerMessage(){
+  const inp=document.getElementById('ownerMsgInput');
+  const msg=inp.value.trim();if(!msg){showToast('พิมพ์ข้อความก่อน');return;}
+  inp.value='';
+  ownerMsgs.push({id:'om'+Date.now(),from:currentUser,text:msg,time:nowStr(),replied:false,reply:''});
+  S.set('ownerMsgs',ownerMsgs); renderInbox(); showToast('📨 ส่งข้อความแล้ว');
+  setTimeout(()=>{
+    const last=ownerMsgs[ownerMsgs.length-1];
+    last.replied=true; last.reply=ownerAiReply(msg);
+    S.set('ownerMsgs',ownerMsgs); renderInbox(); showToast('🤖 AI ตอบแล้ว');
+  },1200);
+}
+function renderInbox(){
+  const box=document.getElementById('ownerInbox');if(!box)return;
+  if(!ownerMsgs.length){box.innerHTML='<div class="empty-state"><div class="ei">📭</div><p>ยังไม่มีข้อความ</p></div>';return;}
+  box.innerHTML=[...ownerMsgs].reverse().map(m=>`
+    <div class="inbox-item">
+      <div class="inbox-from">👤 ${escH(m.from)} <span class="inbox-time">${m.time}</span></div>
+      <div class="inbox-text">${escH(m.text)}</div>
+      ${m.replied?`<div class="inbox-reply">🤖 AI: ${escH(m.reply)}</div>`:`<div class="inbox-pending">⏳ รอตอบ...</div>`}
     </div>`).join('');
 }
 
-function deleteMenu(id) {
-  if (!confirm('ลบเมนูนี้?')) return;
-  menus = menus.filter(m => m.id !== id);
-  save('menus', menus);
-  renderMenus();
-  showToast('ลบเมนูแล้ว');
+/* ═══════════════════════════════════════════════════════════
+   UTILS + INIT
+   ═══════════════════════════════════════════════════════════ */
+function escH(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function nowStr(){return new Date().toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})}
+let _tt;
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),3000);
 }
 
-/* =============================================================
-   AUTH / NAVIGATION
-   ============================================================= */
-function enterSite() {
-  const val = document.getElementById('nameInput').value.trim();
-  if (!val) { showToast('ใส่ชื่อก่อนนะ 😊'); return; }
-  currentUser = val;
-  save('lastUser', val);
-  document.getElementById('nameOverlay').classList.add('hidden');
-  document.getElementById('navbar').classList.remove('hidden');
-  document.getElementById('navUsername').textContent = '👤 ' + val;
-  showPage('dashboard');
-}
+window.addEventListener('DOMContentLoaded',()=>{
+  if(!chefs) setupDemoData();
+  const su=S.get('lastUser','');
+  if(su) document.getElementById('nameInput').value=su;
+  if(S.get('isAdmin',false)){isAdmin=true;}
 
-function changeName() {
-  const n = prompt('ชื่อใหม่:', currentUser);
-  if (n && n.trim()) {
-    currentUser = n.trim();
-    save('lastUser', currentUser);
-    document.getElementById('navUsername').textContent = '👤 ' + currentUser;
-    showToast('เปลี่ยนชื่อแล้ว');
-  }
-}
+  document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')enterSite()});
+  document.getElementById('adminPinInput').addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin()});
+  document.getElementById('chefPinInput').addEventListener('keydown',e=>{if(e.key==='Enter')chefPinLogin()});
 
-function showPage(page) {
-  currentPage = page;
-  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  document.getElementById(page + 'Page').classList.remove('hidden');
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === page));
-  if (page==='dashboard') renderDashboard();
-  if (page==='chefs')     renderChefs();
-  if (page==='kitchen')   renderKitchen();
-  if (page==='menu')      renderMenus();
-  if (page==='chat')      { renderChat(); renderOwnerInbox(); }
-}
-
-/* =============================================================
-   UTILS
-   ============================================================= */
-function escHtml(str) {
-  return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function nowStr() {
-  return new Date().toLocaleString('th-TH', { dateStyle:'short', timeStyle:'short' });
-}
-
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-/* =============================================================
-   INIT
-   ============================================================= */
-window.addEventListener('DOMContentLoaded', () => {
-  if (!chefs) setupDemoData();
-
-  const saved = load('lastUser','');
-  if (saved) document.getElementById('nameInput').value = saved;
-
-  document.getElementById('nameInput').addEventListener('keydown', e => {
-    if (e.key==='Enter') enterSite();
-  });
-  document.getElementById('chefPinInput').addEventListener('keydown', e => {
-    if (e.key==='Enter') chefPinLogin();
-  });
-  document.getElementById('chefModal').addEventListener('click', function(e) {
-    if (e.target===this) closeChefModal();
-  });
-  document.getElementById('chefPinOverlay').addEventListener('click', function(e) {
-    if (e.target===this) closeChefPin();
-  });
+  document.getElementById('chefModal').addEventListener('click',function(e){if(e.target===this)closeChefModal()});
+  document.getElementById('chefPinOverlay').addEventListener('click',function(e){if(e.target===this)closeChefPin()});
+  document.getElementById('adminOverlay').addEventListener('click',function(e){if(e.target===this)closeAdminLogin()});
 });

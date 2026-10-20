@@ -1,138 +1,187 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ครัวนรก ร้อยม.1</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ครัวนรก ร้อยม.1 🔥</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-<!-- ===== OVERLAY: ตั้งชื่อผู้ใช้ ===== -->
+<!-- ══════════════════════════════════════════
+     OVERLAY: ใส่ชื่อ + เลือก role
+══════════════════════════════════════════ -->
 <div id="nameOverlay" class="overlay">
   <div class="overlay-card">
-    <div class="overlay-logo">🔥</div>
+    <div class="fire-anim">🔥</div>
     <h1>ครัวนรก ร้อยม.1</h1>
-    <p>ใส่ชื่อของคุณก่อนเข้าร้าน</p>
-    <input type="text" id="nameInput" placeholder="ชื่อของคุณ..." maxlength="30" />
-    <button onclick="enterSite()">เข้าร้าน 🔥</button>
-    <small>ชื่ออะไรก็ได้</small>
+    <p class="overlay-sub">ยินดีต้อนรับ — ใส่ชื่อเพื่อเข้าร้าน</p>
+    <input type="text" id="nameInput" placeholder="ชื่อของคุณ..." maxlength="30"/>
+    <button class="btn-fire" onclick="enterSite()">เข้าร้าน 🔥</button>
+    <div class="overlay-divider">หรือ</div>
+    <button class="btn-outline" onclick="showAdminLogin()">🔐 Admin Login</button>
+    <small>ชื่ออะไรก็ได้ — ทุกคนจะเห็นชื่อคุณ</small>
   </div>
 </div>
 
-<!-- ===== CHEF PIN OVERLAY ===== -->
+<!-- ══════════════════════════════════════════
+     OVERLAY: Admin Login
+══════════════════════════════════════════ -->
+<div id="adminOverlay" class="overlay hidden">
+  <div class="overlay-card">
+    <div class="fire-anim">🔐</div>
+    <h1>Admin Login</h1>
+    <p class="overlay-sub">ใส่รหัส Admin เพื่อเข้าสู่โหมดจัดการ</p>
+    <input type="text"     id="adminNameInput" placeholder="ชื่อ Admin..." maxlength="20"/>
+    <input type="password" id="adminPinInput"  placeholder="รหัส PIN..." maxlength="10"/>
+    <button class="btn-fire" onclick="adminLogin()">เข้าสู่ระบบ Admin</button>
+    <button class="btn-outline" onclick="closeAdminLogin()" style="margin-top:8px">ยกเลิก</button>
+    <small id="adminLoginHint" style="color:#e74c3c;min-height:18px"></small>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CHEF PIN OVERLAY
+══════════════════════════════════════════ -->
 <div id="chefPinOverlay" class="overlay hidden">
   <div class="overlay-card">
-    <div class="overlay-logo">🔐</div>
+    <div class="fire-anim">🍳</div>
     <h1>เชฟ Login</h1>
-    <p id="chefPinLabel">ใส่รหัส PIN ของคุณ</p>
     <div class="chef-select-row">
-      <button class="chef-select-btn active" onclick="selectChefLogin('chef1',this)">👨‍🍳 อ็อฟ</button>
-      <button class="chef-select-btn" onclick="selectChefLogin('chef2',this)">👨‍🍳 ทัพไทย</button>
-      <button class="chef-select-btn" onclick="selectChefLogin('chef3',this)">👨‍🍳 ไอซ์</button>
+      <button class="chef-select-btn active" onclick="selectChefLogin('chef1',this)">อ็อฟ</button>
+      <button class="chef-select-btn"        onclick="selectChefLogin('chef2',this)">ทัพไทย</button>
+      <button class="chef-select-btn"        onclick="selectChefLogin('chef3',this)">ไอซ์</button>
     </div>
-    <input type="password" id="chefPinInput" placeholder="PIN 4 หลัก..." maxlength="4" />
-    <button onclick="chefPinLogin()">เข้าสู่ระบบเชฟ 🍳</button>
-    <button onclick="closeChefPin()" style="background:rgba(255,255,255,.1);margin-top:8px">ยกเลิก</button>
-    <small id="chefPinHint" style="color:var(--gold)"></small>
+    <input type="password" id="chefPinInput" placeholder="PIN 4 หลัก..." maxlength="4"/>
+    <button class="btn-fire" onclick="chefPinLogin()">เข้าระบบเชฟ</button>
+    <button class="btn-outline" onclick="closeChefPin()" style="margin-top:8px">ยกเลิก</button>
+    <small id="chefPinHint" style="color:#e74c3c;min-height:18px"></small>
   </div>
 </div>
 
-<!-- ===== NAVBAR ===== -->
+<!-- ══════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════ -->
 <nav id="navbar" class="hidden">
-  <div class="nav-brand">🔥 ครัวนรก ร้อยม.1</div>
-  <div class="nav-links">
-    <a href="#" onclick="showPage('dashboard')" class="nav-link active" data-page="dashboard">📊 ภาพรวม</a>
-    <a href="#" onclick="showPage('chefs')"     class="nav-link" data-page="chefs">👨‍🍳 ทีมเชฟ</a>
-    <a href="#" onclick="showPage('kitchen')"   class="nav-link" data-page="kitchen">🍳 งานครัว</a>
-    <a href="#" onclick="showPage('menu')"      class="nav-link" data-page="menu">🍽️ เมนู</a>
-    <a href="#" onclick="showPage('chat')"      class="nav-link" data-page="chat">💬 ถามแอดมิน</a>
+  <div class="nav-left">
+    <div class="nav-brand">🔥 ครัวนรก</div>
+    <div class="nav-links">
+      <a href="#" class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">📊 ภาพรวม</a>
+      <a href="#" class="nav-link"        data-page="chefs"     onclick="showPage('chefs')">👨‍🍳 ทีมเชฟ</a>
+      <a href="#" class="nav-link"        data-page="kitchen"   onclick="showPage('kitchen')">🍳 งานครัว</a>
+      <a href="#" class="nav-link"        data-page="menu"      onclick="showPage('menu')">🍽️ เมนู</a>
+      <a href="#" class="nav-link"        data-page="food"  onclick="showPage('food')">🖼️ อาหาร</a>
+    <a href="#" class="nav-link nav-chat-btn" data-page="chat" onclick="showPage('chat')">🤖 AI แอดมิน</a>
+    </div>
   </div>
-  <div class="nav-user">
-    <span id="navUsername">👤</span>
-    <span id="chefBadge" class="chef-badge hidden"></span>
-    <button onclick="showChefPin()" class="btn-sm btn-chef">🍳 เชฟ Login</button>
-    <button onclick="changeName()" class="btn-sm">✏️</button>
-    <button onclick="setupDemoData()" class="btn-sm btn-demo" title="Demo">🔄</button>
+  <div class="nav-right">
+    <div class="nav-user-info">
+      <span id="navUsername"></span>
+      <span id="roleBadge" class="role-badge"></span>
+    </div>
+    <button id="adminLoginBtn"  class="btn-nav" onclick="showAdminLogin()">🔐 Admin</button>
+    <button id="adminLogoutBtn" class="btn-nav btn-danger hidden" onclick="adminLogout()">🚪 ออก</button>
+    <button id="chefLoginBtn"   class="btn-nav btn-green" onclick="showChefPin()">🍳 เชฟ</button>
+    <button                     class="btn-nav" onclick="changeName()">✏️</button>
+    <button id="demoBtn"        class="btn-nav btn-gold" onclick="setupDemoData()">🔄 Demo</button>
   </div>
 </nav>
 
-<!-- ===== PAGE: DASHBOARD ===== -->
+<!-- ══════════════════════════════════════════
+     PAGE: DASHBOARD
+══════════════════════════════════════════ -->
 <div id="dashboardPage" class="page hidden">
   <div class="page-hero">
+    <div class="hero-bg-text">🔥</div>
     <div class="hero-content">
-      <h1>🔥 ครัวนรก ร้อยม.1</h1>
-      <p>ระบบจัดการครัวและทีมเชฟ</p>
-      <div id="welcomeMsg" class="welcome-badge"></div>
+      <h1 class="hero-title">ครัวนรก ร้อยม.1</h1>
+      <p class="hero-sub">Kitchen Management & Review System</p>
+      <div id="welcomeMsg" class="welcome-pill"></div>
     </div>
   </div>
   <div class="container">
-    <div class="section-title">📊 ภาพรวมวันนี้</div>
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <span>ภาพรวมวันนี้</span>
+    </div>
     <div class="stats-grid">
-      <div class="stat-card" style="--accent:#ff6b35">
+      <div class="stat-card" style="--c:#ff6b35">
         <div class="stat-icon">🍽️</div>
         <div class="stat-num" id="statMenuDone">0</div>
-        <div class="stat-label">เมนูทำแล้ววันนี้</div>
+        <div class="stat-label">เมนูเสร็จวันนี้</div>
       </div>
-      <div class="stat-card" style="--accent:#2ecc71">
+      <div class="stat-card" style="--c:#2ecc71">
         <div class="stat-icon">✅</div>
         <div class="stat-num" id="statKitchenDone">0</div>
-        <div class="stat-label">งานเสร็จวันนี้</div>
+        <div class="stat-label">งานเสร็จทั้งหมด</div>
       </div>
-      <div class="stat-card" style="--accent:#f39c12">
-        <div class="stat-icon">⚙️</div>
-        <div class="stat-num" id="statKitchenCooking">0</div>
+      <div class="stat-card" style="--c:#f39c12">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-num" id="statCooking">0</div>
         <div class="stat-label">กำลังปรุง</div>
       </div>
-      <div class="stat-card" style="--accent:#9b59b6">
-        <div class="stat-icon">💬</div>
-        <div class="stat-num" id="statMessages">0</div>
-        <div class="stat-label">ข้อความจากลูกค้า</div>
+      <div class="stat-card" style="--c:#9b59b6">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-num" id="statReviews">0</div>
+        <div class="stat-label">รีวิวทั้งหมด</div>
       </div>
     </div>
 
-    <div class="section-title">🍳 งานครัวล่าสุด</div>
-    <div id="recentKitchen" class="recent-tasks"></div>
-
-    <div class="section-title">🍽️ เมนูล่าสุด</div>
-    <div id="recentMenus" class="menu-chips"></div>
+    <div class="two-col">
+      <div>
+        <div class="section-header"><span class="section-icon">🍳</span><span>งานครัวล่าสุด</span></div>
+        <div id="recentKitchen" class="feed-list"></div>
+      </div>
+      <div>
+        <div class="section-header"><span class="section-icon">🍽️</span><span>เมนูแนะนำล่าสุด</span></div>
+        <div id="recentMenus" class="chip-wrap"></div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ===== PAGE: CHEFS ===== -->
+<!-- ══════════════════════════════════════════
+     PAGE: CHEFS
+══════════════════════════════════════════ -->
 <div id="chefsPage" class="page hidden">
   <div class="container">
-    <div class="section-title big">👨‍🍳 ทีมเชฟ ครัวนรก</div>
-    <div class="chef-section-label">⭐ หัวหน้าเชฟ</div>
-    <div id="headChefArea" class="chef-grid head-chef"></div>
-    <div class="chef-section-label">👨‍🍳 ลูกทีมเชฟ</div>
-    <div id="subChefArea" class="chef-grid"></div>
+    <div class="page-title-row">
+      <div class="page-title">👨‍🍳 ทีมเชฟ ครัวนรก</div>
+    </div>
+    <div class="chef-group-label gold">⭐ หัวหน้าเชฟ</div>
+    <div id="headChefArea" class="chef-grid head"></div>
+    <div class="chef-group-label">👨‍🍳 ลูกทีมเชฟ</div>
+    <div id="subChefArea"  class="chef-grid"></div>
   </div>
 </div>
 
-<!-- ===== PAGE: KITCHEN (งานครัว) ===== -->
+<!-- ══════════════════════════════════════════
+     PAGE: KITCHEN
+══════════════════════════════════════════ -->
 <div id="kitchenPage" class="page hidden">
   <div class="container">
-    <div class="section-title big">🍳 แจ้งงานครัว</div>
-
-    <!-- เชฟ login panel -->
-    <div id="kitchenLoginPanel" class="add-task-box" style="text-align:center">
-      <div style="font-size:40px;margin-bottom:12px">🔐</div>
-      <div style="font-size:16px;margin-bottom:16px;color:var(--text2)">เชฟต้อง Login ก่อนแจ้งงาน</div>
-      <button onclick="showChefPin()" class="btn-primary">🍳 เชฟ Login</button>
+    <div class="page-title-row">
+      <div class="page-title">🍳 งานครัว</div>
     </div>
 
-    <!-- เชฟแจ้งงาน (แสดงเมื่อ login แล้ว) -->
-    <div id="kitchenAddPanel" class="add-task-box hidden">
-      <h3>🍳 แจ้งงานครัว — <span id="kitchenChefName" style="color:var(--gold)"></span></h3>
+    <!-- เชฟยังไม่ login -->
+    <div id="kitchenLoginPanel" class="info-panel">
+      <div style="font-size:48px">🔐</div>
+      <div style="font-size:16px;color:var(--t2);margin:8px 0 16px">เชฟต้อง Login ก่อนแจ้งงาน</div>
+      <button class="btn-fire" onclick="showChefPin()">🍳 เชฟ Login</button>
+    </div>
+
+    <!-- เชฟ login แล้ว -->
+    <div id="kitchenAddPanel" class="form-card hidden">
+      <div class="form-card-title">🍳 แจ้งงานครัว — <span id="kitchenChefName" class="gold-text"></span></div>
       <div class="form-row">
-        <input type="text" id="kitchenMenuName" placeholder="ชื่อเมนูที่กำลังทำ เช่น กะเพราหมู..." />
+        <input type="text"   id="kitchenMenuName" placeholder="ชื่อเมนูที่ทำ..."/>
         <select id="kitchenMeal">
-          <option value="เช้า">🌅 มื้อเช้า</option>
-          <option value="กลางวัน">☀️ มื้อกลางวัน</option>
-          <option value="เย็น">🌙 มื้อเย็น</option>
+          <option value="เช้า">🌅 เช้า</option>
+          <option value="กลางวัน">☀️ กลางวัน</option>
+          <option value="เย็น">🌙 เย็น</option>
         </select>
         <select id="kitchenStatus">
           <option value="cooking">🔥 กำลังปรุง</option>
@@ -140,96 +189,174 @@
         </select>
       </div>
       <div class="form-row">
-        <input type="text" id="kitchenNote" placeholder="หมายเหตุ (ไม่บังคับ)..." />
-        <input type="number" id="kitchenQty" placeholder="จำนวนจาน" min="1" max="999" />
-        <button onclick="addKitchenLog()">แจ้งงาน 🍳</button>
+        <input type="text"   id="kitchenNote" placeholder="หมายเหตุ (ไม่บังคับ)..."/>
+        <input type="number" id="kitchenQty"  placeholder="จำนวนจาน" min="1"/>
+        <button class="btn-fire" onclick="addKitchenLog()">แจ้งงาน 🍳</button>
       </div>
-      <button onclick="chefLogout()" class="btn-logout">🚪 ออกจากระบบเชฟ</button>
+      <button class="btn-logout" onclick="chefLogout()">🚪 ออกจากระบบเชฟ</button>
     </div>
 
-    <!-- Filter -->
-    <div class="filter-bar" style="margin-top:24px">
-      <button class="filter-btn active" onclick="filterKitchen('all',this)">ทั้งหมด</button>
-      <button class="filter-btn" onclick="filterKitchen('cooking',this)">🔥 กำลังปรุง</button>
-      <button class="filter-btn" onclick="filterKitchen('done',this)">✅ เสร็จแล้ว</button>
-      <button class="filter-btn" onclick="filterKitchen('today',this)">📅 วันนี้</button>
+    <div class="filter-bar">
+      <button class="fbtn active" onclick="filterKitchen('all',this)">ทั้งหมด</button>
+      <button class="fbtn"        onclick="filterKitchen('cooking',this)">🔥 กำลังปรุง</button>
+      <button class="fbtn"        onclick="filterKitchen('done',this)">✅ เสร็จแล้ว</button>
+      <button class="fbtn"        onclick="filterKitchen('today',this)">📅 วันนี้</button>
     </div>
-
-    <div id="kitchenList" class="task-list"></div>
+    <div id="kitchenList" class="card-list"></div>
   </div>
 </div>
 
-<!-- ===== PAGE: MENU ===== -->
+<!-- ══════════════════════════════════════════
+     PAGE: MENU (ผู้ชมเสนอเมนูแนะนำได้)
+══════════════════════════════════════════ -->
 <div id="menuPage" class="page hidden">
   <div class="container">
-    <div class="section-title big">🍽️ เมนูร้าน</div>
-    <div class="add-task-box">
-      <h3>➕ เสนอเมนูใหม่</h3>
+    <div class="page-title-row">
+      <div class="page-title">🍽️ เมนูร้าน</div>
+    </div>
+
+    <!-- ผู้ชมเสนอเมนูแนะนำ -->
+    <div class="form-card suggest-card">
+      <div class="form-card-title">💡 เสนอเมนูแนะนำ <span style="font-size:13px;color:var(--t2);font-weight:400">(ทุกคนเห็น)</span></div>
       <div class="form-row">
-        <input type="text" id="menuName" placeholder="ชื่อเมนู..." />
+        <input type="text"   id="menuName"  placeholder="ชื่อเมนูที่อยากให้มี เช่น ลาบปลาดุก..."/>
         <select id="menuMeal">
-          <option value="เช้า">🌅 มื้อเช้า</option>
-          <option value="กลางวัน">☀️ มื้อกลางวัน</option>
-          <option value="เย็น">🌙 มื้อเย็น</option>
+          <option value="เช้า">🌅 เช้า</option>
+          <option value="กลางวัน">☀️ กลางวัน</option>
+          <option value="เย็น">🌙 เย็น</option>
           <option value="ของว่าง">🍡 ของว่าง</option>
         </select>
-        <input type="number" id="menuPrice" placeholder="ราคา (฿)" min="0" />
       </div>
       <div class="form-row">
-        <input type="text" id="menuDesc" placeholder="รายละเอียด (ไม่บังคับ)..." />
-        <button onclick="addMenu()">เสนอเมนู</button>
+        <input type="text"   id="menuDesc"  placeholder="บอกเหตุผลที่อยากได้เมนูนี้..."/>
+        <button class="btn-fire" onclick="addMenu()">เสนอ 💡</button>
       </div>
     </div>
-    <div class="meal-tabs">
-      <button class="meal-tab active" onclick="showMeal('ทั้งหมด',this)">🍽️ ทั้งหมด</button>
-      <button class="meal-tab" onclick="showMeal('เช้า',this)">🌅 เช้า</button>
-      <button class="meal-tab" onclick="showMeal('กลางวัน',this)">☀️ กลางวัน</button>
-      <button class="meal-tab" onclick="showMeal('เย็น',this)">🌙 เย็น</button>
-      <button class="meal-tab" onclick="showMeal('ของว่าง',this)">🍡 ของว่าง</button>
+
+    <!-- Admin เพิ่มเมนูจริง -->
+    <div id="adminMenuPanel" class="form-card hidden">
+      <div class="form-card-title">🔐 Admin — จัดการเมนูจริง</div>
+      <div class="form-row">
+        <input type="text"   id="adminMenuName"  placeholder="ชื่อเมนู..."/>
+        <select id="adminMenuMeal">
+          <option value="เช้า">🌅 เช้า</option>
+          <option value="กลางวัน">☀️ กลางวัน</option>
+          <option value="เย็น">🌙 เย็น</option>
+          <option value="ของว่าง">🍡 ของว่าง</option>
+        </select>
+        <input type="number" id="adminMenuPrice" placeholder="ราคา (฿)" min="0"/>
+      </div>
+      <div class="form-row">
+        <input type="text"   id="adminMenuDesc"  placeholder="รายละเอียด..."/>
+        <button class="btn-fire" onclick="addAdminMenu()">เพิ่มเมนูจริง ✅</button>
+      </div>
     </div>
-    <div id="menuList" class="menu-list"></div>
+
+    <div class="meal-tabs">
+      <button class="mtab active" onclick="showMeal('ทั้งหมด',this)">🍽️ ทั้งหมด</button>
+      <button class="mtab" onclick="showMeal('เช้า',this)">🌅 เช้า</button>
+      <button class="mtab" onclick="showMeal('กลางวัน',this)">☀️ กลางวัน</button>
+      <button class="mtab" onclick="showMeal('เย็น',this)">🌙 เย็น</button>
+      <button class="mtab" onclick="showMeal('ของว่าง',this)">🍡 ของว่าง</button>
+    </div>
+
+    <div class="section-header" style="margin-top:8px"><span class="section-icon">📋</span><span>เมนูของร้าน</span></div>
+    <div id="menuList" class="menu-grid"></div>
+
+    <div class="section-header" style="margin-top:28px"><span class="section-icon">💡</span><span>เมนูที่ลูกค้าแนะนำ</span></div>
+    <div id="suggestList" class="menu-grid"></div>
   </div>
 </div>
 
-<!-- ===== PAGE: CHAT (ถามแอดมิน AI) ===== -->
-<div id="chatPage" class="page hidden">
+<!-- ══════════════════════════════════════════
+     PAGE: FOOD — หน้าอาหารรูปจริง
+══════════════════════════════════════════ -->
+<div id="foodPage" class="page hidden">
   <div class="container">
-    <div class="section-title big">💬 ถามแอดมิน AI</div>
-    <div class="chat-info-box">
-      <span>🤖</span>
-      <div>
-        <strong>AI แอดมิน ครัวนรก</strong><br/>
-        <small style="color:var(--text2)">ถามอะไรก็ได้เกี่ยวกับร้าน ระวังตอบหยาบๆ นะ 😈</small>
-      </div>
+    <div class="page-title-row">
+      <div class="page-title">🖼️ อาหารของร้าน</div>
+      <div style="color:var(--t2);font-size:14px;margin-top:4px">พิมพ์ชื่ออาหาร → ระบบหารูปให้อัตโนมัติ</div>
     </div>
 
-    <!-- กล่องส่งข้อความถึงเจ้าของ -->
-    <div class="owner-msg-box">
-      <div style="font-size:15px;font-weight:600;margin-bottom:10px">📨 ส่งข้อความถึงเจ้าของร้าน</div>
+    <!-- ฟอร์มเพิ่มอาหาร (ทุกคนทำได้) -->
+    <div class="form-card">
+      <div class="form-card-title">➕ เพิ่มอาหาร <span style="font-size:12px;color:var(--t2);font-weight:400">— ทุกคนเสนอได้ ระบบหารูปให้เอง</span></div>
       <div class="form-row">
-        <input type="text" id="ownerMsgInput" placeholder="พิมพ์ข้อความถึงเจ้าของร้าน..." maxlength="300" />
-        <button onclick="sendOwnerMessage()">ส่ง 📨</button>
+        <input type="text" id="foodName" placeholder="ชื่ออาหาร เช่น กะเพราหมูสับ, ต้มยำกุ้ง..."
+          oninput="clearTimeout(window._foodPrevTimer); window._foodPrevTimer=setTimeout(()=>previewFoodImage('foodName','foodImgPreview'),800)"/>
+        <select id="foodCat">
+          <option value="อาหารจานเดียว">🍛 อาหารจานเดียว</option>
+          <option value="ซุป/แกง">🍲 ซุป/แกง</option>
+          <option value="ยำ/สลัด">🥗 ยำ/สลัด</option>
+          <option value="ของทอด">🍗 ของทอด</option>
+          <option value="ของหวาน">🍮 ของหวาน</option>
+          <option value="เครื่องดื่ม">🥤 เครื่องดื่ม</option>
+          <option value="อื่นๆ">📦 อื่นๆ</option>
+        </select>
       </div>
+      <div class="form-row">
+        <input type="text" id="foodDesc" placeholder="รายละเอียด (ไม่บังคับ)..."/>
+        <button class="btn-fire" onclick="addFoodItem()">เพิ่มอาหาร 🍽️</button>
+      </div>
+      <!-- Preview รูปอัตโนมัติ -->
+      <div id="foodImgPreview" style="min-height:20px"></div>
     </div>
 
-    <!-- กล่อง AI Chat -->
-    <div class="chat-window" id="chatWindow"></div>
-    <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="พิมพ์คำถาม เช่น ร้านเปิดกี่โมง?" maxlength="200" />
-      <button onclick="sendChat()">ส่ง 🔥</button>
+    <!-- Filter หมวดหมู่ -->
+    <div class="filter-bar">
+      <button class="ftab active" onclick="filterFood('ทั้งหมด',this)">🍽️ ทั้งหมด</button>
+      <button class="ftab" onclick="filterFood('อาหารจานเดียว',this)">🍛 จานเดียว</button>
+      <button class="ftab" onclick="filterFood('ซุป/แกง',this)">🍲 ซุป/แกง</button>
+      <button class="ftab" onclick="filterFood('ยำ/สลัด',this)">🥗 ยำ/สลัด</button>
+      <button class="ftab" onclick="filterFood('ของทอด',this)">🍗 ของทอด</button>
+      <button class="ftab" onclick="filterFood('ของหวาน',this)">🍮 ของหวาน</button>
     </div>
 
-    <!-- inbox ข้อความถึงเจ้าของ (admin view) -->
-    <div style="margin-top:32px">
-      <div class="section-title">📬 inbox เจ้าของร้าน</div>
+    <div id="foodGrid" class="food-grid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: AI CHAT (ใหญ่ขึ้น โดดเด่น)
+══════════════════════════════════════════ -->
+<div id="chatPage" class="page hidden">
+  <div class="chat-hero">
+    <div class="chat-hero-icon">🤖</div>
+    <div class="chat-hero-title">AI แอดมิน ครัวนรก</div>
+    <div class="chat-hero-sub">ถามอะไรก็ได้เกี่ยวกับร้าน • ตอบหยาบๆ แต่ช่วยได้ 😈</div>
+  </div>
+
+  <div class="container chat-container">
+    <!-- ส่งข้อความถึงเจ้าของ -->
+    <div class="owner-msg-section">
+      <div class="section-header"><span class="section-icon">📨</span><span>ส่งข้อความถึงเจ้าของร้านโดยตรง</span></div>
+      <div class="owner-msg-form">
+        <input type="text" id="ownerMsgInput" placeholder="พิมพ์ข้อความถึงเจ้าของร้าน... (ทุกคนเห็น)"/>
+        <button class="btn-fire" onclick="sendOwnerMessage()">ส่ง 📨</button>
+      </div>
       <div id="ownerInbox" class="inbox-list"></div>
     </div>
+
+    <!-- AI Chat window -->
+    <div class="section-header" style="margin-top:32px"><span class="section-icon">🤖</span><span>ถาม AI แอดมิน</span></div>
+    <div class="chat-window" id="chatWindow">
+      <div class="chat-msg chat-ai">
+        <div class="chat-name">🤖 AI แอดมิน</div>
+        <div class="chat-bubble">สวัสดีวะ! มีอะไรจะถามเรื่องร้านครัวนรกเหรอ? ถามมาเลย ไม่ต้องเกรงใจ 😈🔥</div>
+      </div>
+    </div>
+    <div class="chat-input-bar">
+      <input type="text" id="chatInput" placeholder="ถามเรื่องร้าน เช่น เปิดกี่โมง? เมนูอะไรอร่อย?"/>
+      <button class="btn-fire" onclick="sendChat()">ส่ง 🔥</button>
+    </div>
   </div>
 </div>
 
-<!-- ===== MODAL: เชฟรายละเอียด ===== -->
-<div id="chefModal" class="modal-overlay hidden">
-  <div class="modal-card">
+<!-- ══════════════════════════════════════════
+     MODAL: เชฟรายละเอียด
+══════════════════════════════════════════ -->
+<div id="chefModal" class="modal-bg hidden">
+  <div class="modal-box">
     <button class="modal-close" onclick="closeChefModal()">✕</button>
     <div id="modalContent"></div>
   </div>

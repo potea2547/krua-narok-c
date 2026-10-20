@@ -1,9 +1,49 @@
 /* ═══════════════════════════════════════════════════════════
-   ครัวนรก ร้อยม.1 — app.js  (Full Version)
+   ครัวนรก ร้อยม.1 — app.js  (Full Version + Firebase)
    ═══════════════════════════════════════════════════════════ */
 
+// ─── FIREBASE CONFIG ──────────────────────────────────────────
+const FB_URL = 'https://krua-narok-c-32494-default-rtdb.firebaseio.com';
+
+// Firebase REST helpers
+const FB = {
+  async get(path){
+    try{
+      const r = await fetch(`${FB_URL}/${path}.json`);
+      return await r.json();
+    } catch(e){ return null; }
+  },
+  async set(path, data){
+    try{
+      await fetch(`${FB_URL}/${path}.json`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+    } catch(e){}
+  },
+  async push(path, data){
+    try{
+      const r = await fetch(`${FB_URL}/${path}.json`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      return await r.json(); // { name: "-Nxxx" }
+    } catch(e){ return null; }
+  },
+  async delete(path){
+    try{
+      await fetch(`${FB_URL}/${path}.json`, { method:'DELETE' });
+    } catch(e){}
+  },
+  // Poll ทุก 5 วินาที (realtime-like)
+  poll(path, callback, interval=5000){
+    callback(); // เรียกครั้งแรกทันที
+    return setInterval(callback, interval);
+  }
+};
+
 // ─── PINS ─────────────────────────────────────────────────────
-const ADMIN_PIN = '159787';   // ← เปลี่ยน PIN แอดมินตรงนี้
+const ADMIN_PIN = '159787';
 const CHEF_PINS = { chef1:'1111', chef2:'2222', chef3:'3333' };
 
 // ─── STATE ────────────────────────────────────────────────────
@@ -454,25 +494,41 @@ async function addKitchenLog(){
   const c=chefs&&chefs.find(x=>x.id===loggedChefId);
   showToast('🔍 กำลังหารูป...');
   const img=await fetchFoodImage(name);
-  kitchenLogs.push({id:'k'+Date.now(),chefId:loggedChefId,chefName:c?c.name:loggedChefId,
-    menuName:name,meal,qty,status,note,foodImg:img,photo:null,
-    createdAt:new Date().toLocaleDateString('th-TH')});
+  const newLog={id:'k'+Date.now(),chefId:loggedChefId,chefName:c?c.name:loggedChefId,
+    menuName:name,meal,qty,status,note,foodImg:img||null,photo:null,
+    createdAt:new Date().toLocaleDateString('th-TH')};
+  // บันทึกลง Firebase
+  await FB.push('kitchenLogs', newLog);
+  kitchenLogs.push(newLog); // update local
   S.set('kitchenLogs',kitchenLogs);
   document.getElementById('kitchenMenuName').value='';
   document.getElementById('kitchenNote').value='';
   document.getElementById('kitchenQty').value='';
   renderKitchen(); renderDashboard();
-  showToast('แจ้งงาน "'+name+'" แล้ว 🍳');
+  showToast('แจ้งงาน "'+name+'" แล้ว 🍳 (sync แล้ว)');
 }
-function updateKStatus(id,st){
+async function updateKStatus(id,st){
   const k=kitchenLogs.find(x=>x.id===id);if(!k)return;
   if(loggedChefId&&k.chefId!==loggedChefId&&!isAdmin){showToast('❌ แก้ได้แค่งานตัวเอง');return;}
-  k.status=st;S.set('kitchenLogs',kitchenLogs);renderKitchen();renderDashboard();showToast('อัปเดตแล้ว ✅');
+  k.status=st;
+  // หา Firebase key
+  const all=await FB.get('kitchenLogs');
+  if(all){
+    const fbKey=Object.keys(all).find(k2=>all[k2].id===id);
+    if(fbKey) await FB.set('kitchenLogs/'+fbKey+'/status', st);
+  }
+  S.set('kitchenLogs',kitchenLogs);renderKitchen();renderDashboard();showToast('อัปเดตแล้ว ✅');
 }
-function deleteKLog(id){
+async function deleteKLog(id){
   const k=kitchenLogs.find(x=>x.id===id);if(!k)return;
   if(!isAdmin&&(!loggedChefId||k.chefId!==loggedChefId)){showToast('❌ ไม่มีสิทธิ์ลบ');return;}
   if(!confirm('ลบงานนี้?'))return;
+  // ลบจาก Firebase
+  const all=await FB.get('kitchenLogs');
+  if(all){
+    const fbKey=Object.keys(all).find(k2=>all[k2].id===id);
+    if(fbKey) await FB.delete('kitchenLogs/'+fbKey);
+  }
   kitchenLogs=kitchenLogs.filter(x=>x.id!==id);
   S.set('kitchenLogs',kitchenLogs);renderKitchen();showToast('ลบแล้ว');
 }
@@ -541,10 +597,12 @@ async function addMenu(){
     proposedBy:currentUser,isChef,isAdmin:isAdmin,
     createdAt:new Date().toLocaleDateString('th-TH')});
   S.set('menus_v2',menus);
+  // sync Firebase
+  FB.push('menus_v2', menus[menus.length-1]);
   document.getElementById('menuName').value='';
   document.getElementById('menuDesc').value='';
   renderMenuPage();
-  showToast((isChef?'🍳 เชฟ':'💡')+' เสนอเมนู "'+name+'" แล้ว');
+  showToast((isChef?'🍳 เชฟ':'💡')+' เสนอเมนู "'+name+'" แล้ว (sync แล้ว)');
 }
 async function addAdminMenu(){
   if(!isAdmin){showToast('❌ เฉพาะ Admin');return;}
@@ -686,12 +744,18 @@ function sendOwnerMessage(){
   const inp=document.getElementById('ownerMsgInput');
   const msg=inp.value.trim();if(!msg){showToast('พิมพ์ข้อความก่อน');return;}
   inp.value='';
-  ownerMsgs.push({id:'om'+Date.now(),from:currentUser,text:msg,time:nowStr(),replied:false,reply:''});
-  S.set('ownerMsgs',ownerMsgs); renderInbox(); showToast('📨 ส่งข้อความแล้ว');
+  const newMsg={id:'om'+Date.now(),from:currentUser,text:msg,time:nowStr(),replied:false,reply:''};
+  ownerMsgs.push(newMsg);
+  S.set('ownerMsgs',ownerMsgs);
+  // บันทึกลง Firebase
+  FB.push('ownerMsgs', newMsg);
+  renderInbox(); showToast('📨 ส่งข้อความแล้ว');
   setTimeout(()=>{
     const last=ownerMsgs[ownerMsgs.length-1];
     last.replied=true; last.reply=ownerAiReply(msg);
-    S.set('ownerMsgs',ownerMsgs); renderInbox(); showToast('🤖 AI ตอบแล้ว');
+    S.set('ownerMsgs',ownerMsgs);
+    FB.push('ownerMsgs', last);
+    renderInbox(); showToast('🤖 AI ตอบแล้ว');
   },1200);
 }
 function renderInbox(){
@@ -716,6 +780,44 @@ function showToast(msg){
   clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),3000);
 }
 
+// โหลดข้อมูล real-time จาก Firebase
+async function syncFromFirebase(){
+  try{
+    // kitchenLogs
+    const kData = await FB.get('kitchenLogs');
+    if(kData){
+      kitchenLogs = Object.values(kData).filter(Boolean);
+      S.set('kitchenLogs', kitchenLogs);
+    }
+    // menus
+    const mData = await FB.get('menus_v2');
+    if(mData){
+      menus = Object.values(mData).filter(Boolean);
+      S.set('menus_v2', menus);
+    }
+    // ownerMsgs
+    const oData = await FB.get('ownerMsgs');
+    if(oData){
+      ownerMsgs = Object.values(oData).filter(Boolean);
+      S.set('ownerMsgs', ownerMsgs);
+    }
+    // chefs ratings & comments
+    const cData = await FB.get('chefs_v2');
+    if(cData && chefs){
+      const fbChefs = Object.values(cData).filter(Boolean);
+      fbChefs.forEach(fc=>{
+        const local = chefs.find(c=>c.id===fc.id);
+        if(local){
+          local.ratings  = fc.ratings  || local.ratings;
+          local.comments = fc.comments || local.comments;
+        }
+      });
+      S.set('chefs_v2', chefs);
+    }
+    renderCurrentPage();
+  } catch(e){}
+}
+
 window.addEventListener('DOMContentLoaded',()=>{
   if(!chefs) setupDemoData();
   const su=S.get('lastUser','');
@@ -729,4 +831,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('chefModal').addEventListener('click',function(e){if(e.target===this)closeChefModal()});
   document.getElementById('chefPinOverlay').addEventListener('click',function(e){if(e.target===this)closeChefPin()});
   document.getElementById('adminOverlay').addEventListener('click',function(e){if(e.target===this)closeAdminLogin()});
+
+  // Sync จาก Firebase ทุก 5 วิ (ทุกคนเห็นข้อมูลเหมือนกัน)
+  syncFromFirebase();
+  setInterval(syncFromFirebase, 5000);
 });
